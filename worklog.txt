@@ -76,6 +76,58 @@ how the distribution changes.
 Other examples interesting but not much to learn there.
 
 
+# Understanding what’s going on
+
+All seems reasonably clear, but there are some nice visualisations.  I particularly like the ones showing the text with the colour
+whether the neuron under examination is firing.
+
+
+# Source code
+
+I think that it would be good to build my own, with LLM help, but his source will be a useful reference as needed.
+
+Interesting reference that Torch was cool then -- but of course PyTorch won out.
+
+# Further Reading
+
+Note lots of references to Sutskever
+
+"Currently it seems that word-level models work better than character-level models, but this is surely a temporary thing" -- hmm
+
+"A second issue is they unnecessarily couple their representation size to the amount of computation per step. For instance, if you double the size of the hidden state vector you’d quadruple the amount of FLOPS at each step due to the matrix multiplication. Ideally, we’d like to maintain a huge representation/memory (e.g. containing all of Wikipedia or many intermediate state variables), while maintaining the ability to keep computation per time step fixed."
+
+Hinting at fixed-length bottleneck here.
+
+"The concept of attention is the most interesting recent architectural innovation in neural networks."
+
+Interesting that attention gets mentioned.  Same meaning as now?  (Obviously not identical, but...)
+
+"unfortunately one sacrifices efficiency because everything that can be attended to is attended to" well yes.
+
+"This then calls for use of techniques from the Reinforcement Learning literature (e.g. REINFORCE) where people are perfectly used to the concept of non-differentiable interactions"
+
+Hmmm.  So RL does not depend on differentiability.  That pushes it high up my list of things to learn.
+
+The "People" bit at the end has what look like interesting links (though they go to individuals' homepages rather than the papers in question)
+
+
+
+
+
+
+
+
+
+
+----ends
+
+
+I was originally thinking of a post titled "reproducing karpathy" but thinking about it, maybe more of a "revisiting Karpathy".
+Or something more specific, it would be silly to imply that this is the most important (or even one of the top ten most important)
+things he's done.
+
+
+
 
 
 
