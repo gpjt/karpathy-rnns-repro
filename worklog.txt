@@ -1,0 +1,83 @@
+The plan: repro as much as possible of Karpathy's blog post The Unreasonable Effectiveness of Recurrent Neural Networks
+
+2025-09-03
+
+Found article: https://karpathy.github.io/2015/05/21/rnn-effectiveness/
+
+Read through, there's a lot there!
+
+# Recurrent Neural Networks
+
+Diffs between VNNs and CNNs and RNNs: fixed-size input vector.  Interestingly, LLMs have a fixed-size input -- the context length.
+Likewise fixed number of computational steps.  This is touted as an advantage, though of course there's no real value in
+spending as long completing "the fat cat sat on the mat" as you do completing a 100k token chat transcript.
+
+Do real-world LLMs trim the sequence length to match the actual size?  Using padding tokens feels like a waste.  But then
+batches are hard as you'd want them all to be the same size.
+
+But of course for RNNs the hidden state is fixed-size so you have the bottleneck.  It doesn't matter how long you spend
+thinking about stuff if you're forgetting things all of the time.
+
+RNNs being turing-complete presumably assumes infinite precision in the hidden state.
+
+Sequences for not-obviously sequential stuff (eg. gaze pattern) is interesting, I remember reading about that
+at the time.
+
+His explanation of RNNs is interesting and while compatible with my own, differs
+in some interesting ways.  My "hidden states are hidden outputs" is a useful thing for understanding how things are
+unrolled, but the practice is of course different.  Perhaps that doesn't matter in actual training?
+
+tanh for activation function interesting, and I note it's only applied to the hidden state update (and the Y is generated
+purely on the hidden state after the update, which makes sense otherwise you'd need to do it on X and then H).
+
+Worth noting: to do multi-layer, he just defines a class then calls it twice.  Makes sense!  You can just do that and
+then run backwards with PyTorch, I think.  Will be worth experimenting.
+
+LSTMs are used in the essay, and they're more complex.  Worth noting.  Will want to dig into that, I think.
+
+
+# Character-Level Language Models
+
+OK, so we're not tokenising.  That's important and part of what makes this interesting to me.
+
+Explanation is clear, but the error function is not specified and we'll need to think about that.
+
+Note softmax is cropping up again!
+
+"The RNN is trained with mini-batch Stochastic Gradient Descent and I like to use RMSProp or Adam (per-parameter adaptive learning rate methods) to stablilize the updates."
+
+Code at https://gist.github.com/karpathy/d4dee566867f8291f086 looks useful to learn from.  However, it's RNN rather than LSTM.
+
+https://github.com/karpathy/char-rnn perhaps more relevant?  It links to https://cs.stanford.edu/people/karpathy/char-rnn/, which has the shakespeare, war and peace and wikipedia datasets.  Not the PG one, of course -- copyright would be a problem there.  And the Linux one is just the kernel, not the full dataset he trained on.
+
+# Fun with RNNs
+
+## Paul Graham generator
+
+"this can be cut in half with 50 character BPTT at negligible cost in performance" -- asked ChatGPT and after some discussion it tells me that my gloss on what it said as "with 50-character BPTT, we run a 100-character sequence through but only backprop through the last 50 characters-worth" is a good summary.
+
+"We can also play with the temperature of the Softmax during sampling".  Interesting.  I'd thought of temperature as being
+something used when selecting from output options provided by the probability distribution provided by softmax, not an input into
+softmax itself.  Chatting with ChatGPT, I came to a better understanding.  My summary (confirmed by it):
+
+We never use argmax -- instead, we choose an output value by dividing our logits by the temperature, then running it through softmax. That gives us a probability distribution, and we always pick from that based on probabilities, so regardless of temperature, if softmax gives us (0.1, 0.4, 0.5) we always pick the first one 10% of the time, the second 40%, and the last 50%.
+
+So, Karpathy is not being technically accurate (though he is phrasing things exactly as people in the industry do).  Temperature
+is not part of softmax itself, but nor is it (like I'd imagined) a parameter used when choosing a next character based on the
+post-softmax probabilities.
+
+Instead, we just divide the logits by it before running them through softmax.  This has the effect of flattening the distribution
+if T > 1, or sharpening it if T < 1.  That also explains why he says "setting temperature very near zero will give the most likely thing that Paul Graham might say" -- if we set it to exactly zero we'd get a divide by zero.
+
+Might be worth a post or at least a callout somewhere later in the LLM from scratch series or in this one.  With a worked example showing
+how the distribution changes.
+
+
+Other examples interesting but not much to learn there.
+
+
+
+
+
+
+
