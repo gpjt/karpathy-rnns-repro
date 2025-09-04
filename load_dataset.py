@@ -47,7 +47,7 @@ class NextByteDataset(Dataset):
         y_tensors = self.data_as_ids[start + 1:end + 1]
 
 
-        return (xs, x_tensors, ys, y_tensors)
+        return x_tensors, y_tensors, xs, ys
 
 
 
