@@ -336,9 +336,17 @@ and only learns how 50 characters of stuff might be affected by it.
 
 Need to think about that a bit.
 
+Anyway: what we need is that dataset.  What I think we need from a PyTorch perspective is to split it into sequence_length
+sized chunks and work out the Xs and Ys.
 
+I was a bit confused by the NamesDataset at https://docs.pytorch.org/tutorials/intermediate/char_rnn_classification_tutorial?utm_source=chatgpt.com,
+because I (rightly) thought that "data" meant Xs and "labels" meant Ys, but they weren't doing the shift-right stuff for the Ys.
+ChatGPT put me straight -- it's a classifier, so the Ys are the nationality of the names that are in the Xs.
 
+So: So what we'll need to do in our example is split up the input text, convert to one-hots, then build a dataset like that with the data_tensors set to the input one-hots and label_tensors set to the shifted-right ones.
 
+data and labels are human-friendly representations of the data items, so we can set them to the text in question.  I think
+we're in a good position to get started.
 
 
 
@@ -374,37 +382,6 @@ Need to think about that a bit.
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-It then, through some
-weird and wonderful lua code, allocates an int to each one, so we have a table mapping characters to ints.
 
 
 
