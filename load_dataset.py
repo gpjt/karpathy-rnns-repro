@@ -10,44 +10,45 @@ from torch.utils.data import Dataset
 
 class NextByteDataset(Dataset):
 
-    def __init__(self, data, seq_length):
+    def __init__(self, full_data, seq_length):
         super().__init__()
 
-        num_sequences = len(data) // seq_length
-        truncated_data = data[:(num_sequences * seq_length) + 1]
+        self.seq_length = seq_length
 
-        values_used = set(truncated_data)
+        self.num_sequences = (len(full_data) - 1) // self.seq_length
+        self.data = full_data[:(self.num_sequences * self.seq_length) + 1]
+
+        values_used = set(self.data)
         self.byte_to_id = {
             byte: ii
             for (ii, byte) in enumerate(sorted(values_used))
         }
-        data_as_ids = [self.byte_to_id[b] for b in truncated_data]
-
-        self.xs = []
-        self.x_tensors = []
-        self.ys = []
-        self.y_tensors = []
-        for sequence_num in range(num_sequences):
-            start = sequence_num * seq_length
-            x_sequence = data_as_ids[start:start + seq_length]
-            y_sequence = data_as_ids[start + 1: start + seq_length + 1]
-
-            self.xs.append(x_sequence)
-            self.x_tensors.append(F.one_hot(torch.tensor(x_sequence, dtype=torch.long)))
-
-            self.ys.append(y_sequence)
-            self.y_tensors.append(F.one_hot(torch.tensor(y_sequence, dtype=torch.long)))
+        data_as_ids = torch.tensor(
+            [self.byte_to_id[b] for b in self.data],
+            dtype=torch.long
+        )
+        self.one_hots = F.one_hot(
+            data_as_ids,
+            num_classes=len(self.byte_to_id)
+        ).float()
 
 
     def __len__(self):
-        return len(self.xs)
+        return self.num_sequences
 
 
     def __getitem__(self, ix):
-        return (
-            self.xs[ix], self.x_tensors[ix],
-            self.ys[ix], self.y_tensors[ix],
-        )
+        start = ix * self.seq_length
+        end = start + self.seq_length
+
+        xs = self.data[start:end]
+        x_tensors = self.one_hots[start:end]
+
+        ys = self.data[start + 1:end + 1]
+        y_tensors = self.one_hots[start + 1:end + 1]
+
+
+        return (xs, x_tensors, ys, y_tensors)
 
 
 
