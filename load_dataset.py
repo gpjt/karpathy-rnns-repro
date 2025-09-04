@@ -23,14 +23,10 @@ class NextByteDataset(Dataset):
             byte: ii
             for (ii, byte) in enumerate(sorted(values_used))
         }
-        data_as_ids = torch.tensor(
+        self.data_as_ids = torch.tensor(
             [self.byte_to_id[b] for b in self.data],
             dtype=torch.long
         )
-        self.one_hots = F.one_hot(
-            data_as_ids,
-            num_classes=len(self.byte_to_id)
-        ).float()
 
 
     def __len__(self):
@@ -42,10 +38,10 @@ class NextByteDataset(Dataset):
         end = start + self.seq_length
 
         xs = self.data[start:end]
-        x_tensors = self.one_hots[start:end]
+        x_tensors = self.data_as_ids[start:end]
 
         ys = self.data[start + 1:end + 1]
-        y_tensors = self.one_hots[start + 1:end + 1]
+        y_tensors = self.data_as_ids[start + 1:end + 1]
 
 
         return (xs, x_tensors, ys, y_tensors)
