@@ -446,6 +446,11 @@ relatively cheap slices of the byte array for the raw stuff, which I believe is 
 
 Quite a lot of work want into that with a bunch of circling around, but I think that I've got a reasonable handle on it now.
 
+Some thoughts: due to the "train on contiguous sequences keeping the hidden state" thing, we should not shuffle this dataset.  That
+exposes an issue -- how can we get a solid test set?  I'm thinking maybe just hold back the last 20% or something?
+
+Vague discussion with ChatGPT, and that leads to another point: what do we do with batches?  We need some kind of continuous threads going through.
+
 
 
 
