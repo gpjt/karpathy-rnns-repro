@@ -451,6 +451,8 @@ exposes an issue -- how can we get a solid test set?  I'm thinking maybe just ho
 
 Vague discussion with ChatGPT, and that leads to another point: what do we do with batches?  We need some kind of continuous threads going through.
 
+Thought: perhaps we need to be breaking out into batches inside the dataloader?  That's what K seems to be doing.  Need to read and understand the code better.
+
 
 
 
