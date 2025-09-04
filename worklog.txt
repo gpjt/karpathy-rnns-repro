@@ -122,9 +122,24 @@ The "People" bit at the end has what look like interesting links (though they go
 ----ends
 
 
+Chat with ChatGPT: https://chatgpt.com/c/68b87061-0b58-8326-98d6-1be84411d10e
+
+Some interesting stuff about RNNs (some of which is mixed in above).
+
 I was originally thinking of a post titled "reproducing karpathy" but thinking about it, maybe more of a "revisiting Karpathy".
 Or something more specific, it would be silly to imply that this is the most important (or even one of the top ten most important)
 things he's done.
+
+Proposed path:
+
+1. intro the article, brief summary, perhaps some high-level gloss on the above.
+2. implementation: use PyTorch's built-in LSTM, with parameters chosen from the article/accompanying source.  Train and generate on K's
+test data, see if we get similar results.  I think this will need to have the temperature calculations I discussed with ChatGPT.
+3. building an LSTM, step 1: build an RNN from "scratch" (in PyTorch, of course, so not reall from scratch).  Try to train, show vanishing gradients problem
+4. Step 2, make it an LSTM.  Show it works.
+
+
+
 
 
 
