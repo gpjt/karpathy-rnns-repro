@@ -20,8 +20,8 @@ class NextByteDataset(Dataset):
 
         self.data = full_data[:(self.num_sequences * self.seq_length) + 1]
 
-        values_used = set(self.data)
-        self.id_to_byte = {ii: byte for (ii, byte) in enumerate(sorted(values_used))}
+        self.vocab = sorted(set(self.data))
+        self.id_to_byte = {ii: byte for (ii, byte) in enumerate(self.vocab)}
         self.byte_to_id = {
             byte: ii
             for (ii, byte) in self.id_to_byte.items()
@@ -41,13 +41,13 @@ class NextByteDataset(Dataset):
         end = start + self.seq_length
 
         xs = self.data[start:end]
-        x_tensors = self.data_as_ids[start:end]
+        x_ids = self.data_as_ids[start:end]
 
         ys = self.data[start + 1:end + 1]
-        y_tensors = self.data_as_ids[start + 1:end + 1]
+        y_ids = self.data_as_ids[start + 1:end + 1]
 
 
-        return x_tensors, y_tensors, xs, ys
+        return x_ids, y_ids, xs, ys
 
 
 
