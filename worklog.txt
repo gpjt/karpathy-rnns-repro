@@ -139,6 +139,30 @@ test data, see if we get similar results.  I think this will need to have the te
 4. Step 2, make it an LSTM.  Show it works.
 
 
+Series title, brainstormed with ChatGPT:
+
+Old-school language models
+Vintage language models
+Retro language models
+
+This as a start for each post's title, with the following per-post titles:
+
+Revisiting Karpathy’s “The Unreasonable Effectiveness of Recurrent Neural Networks”
+Reproducing results with PyTorch’s LSTM
+Rolling our own RNN cell
+From RNN to LSTM
+
+I'm sure of the first, the next three could do with some tightening
+
+
+
+
+
+
+
+
+
+
 
 
 
