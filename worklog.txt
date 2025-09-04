@@ -348,6 +348,103 @@ So: So what we'll need to do in our example is split up the input text, convert 
 data and labels are human-friendly representations of the data items, so we can set them to the text in question.  I think
 we're in a good position to get started.
 
+After some back and forth, we have this:
+
+```
+import os
+import time
+
+import click
+import torch
+
+from torch.utils.data import Dataset
+
+
+class NextByteDataset(Dataset):
+
+    def __init__(self, full_data, seq_length):
+        super().__init__()
+
+        assert seq_length > 0, "Sequence length must be > 0"
+        self.seq_length = seq_length
+
+        self.num_sequences = (len(full_data) - 1) // self.seq_length
+        assert self.num_sequences > 0, "Not enough data for any sequences"
+
+        self.data = full_data[:(self.num_sequences * self.seq_length) + 1]
+
+        self.vocab = sorted(set(self.data))
+        self.id_to_byte = {ii: byte for (ii, byte) in enumerate(self.vocab)}
+        self.byte_to_id = {
+            byte: ii
+            for (ii, byte) in self.id_to_byte.items()
+        }
+        self.data_as_ids = torch.tensor(
+            [self.byte_to_id[b] for b in self.data],
+            dtype=torch.long
+        )
+
+
+    def __len__(self):
+        return self.num_sequences
+
+
+    def __getitem__(self, ix):
+        start = ix * self.seq_length
+        end = start + self.seq_length
+
+        xs = self.data[start:end]
+        x_ids = self.data_as_ids[start:end]
+
+        ys = self.data[start + 1:end + 1]
+        y_ids = self.data_as_ids[start + 1:end + 1]
+
+
+        return x_ids, y_ids, xs, ys
+
+
+
+def load_dataset(directory, seq_length):
+    filename = os.path.join(directory, "input.txt")
+    with open(filename, "rb") as f:
+        data = f.read()
+
+    return NextByteDataset(data, seq_length)
+
+
+@click.command()
+@click.argument("directory")
+@click.argument("seq_length", type=int)
+def main(directory, seq_length):
+    start = time.time()
+    dataset = load_dataset(directory, seq_length)
+    print(time.time() - start)
+
+    print(len(dataset))
+    print(dataset[0])
+
+
+if __name__ == "__main__":
+    main()
+```
+
+Disregarding the test harness we have:
+
+* We're not converting to one-hots in the dataset like the tutorial did.  We could, but ChatGPT suggests that we do that as-needed,
+  which doesn't sound crazy.
+* The ordering of the return values differs from the tutorial.  It does Y_for_nn, X_for_nn, Y_raw, X_raw, where the raw values are largely for
+  debugging.  We're swapping around X and Y.  This is apparently because classification tasks like the tutorial tend to have the label first, while with language
+  processing people do X first.  TBH I prefer it.
+
+So, we have a simple dataloader that loads up the file, splits it so that it has a round number of sequences-worth (note the -1 in num_sequences
+because we need to allow for the fact that Y is shifted right a character, so we need one extra for that, and the matching +1 in the full_data slice),
+gets the vocab by finding all unique bytes then sorting it so that we match K's lexicographic IDs for bytes, generate an id to byte mapping (which
+will be needed for decoding -- YAGNI doesn't apply because WAGNI), flip that to get our byte_to_id dict, then create a torch.tensor with the data
+converted into IDs.  Our length is the number of sequences we have, and __getitem__ just returns slices into the ID-ified tensor for the values
+we're going to be running through/receiving from the RNN (as it's a tensor this will probably be views, so no copying required), and then
+relatively cheap slices of the byte array for the raw stuff, which I believe is only ever used for debugging anyway.
+
+Quite a lot of work want into that with a bunch of circling around, but I think that I've got a reasonable handle on it now.
 
 
 
