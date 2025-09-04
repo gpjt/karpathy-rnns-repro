@@ -157,11 +157,103 @@ I'm sure of the first, the next three could do with some tightening
 
 
 
+2025-09-04
+
+Let's get started with the Shakespeare example, given that the Paul Graham dataset isn't available (for good reason).
+
+First step, a dummy script to make sure that I understand the imports and so on (I've set up a uv environment with
+ipython, numpy and PyTorch):
+
+```
+giles@perry:~/Dev/karpathy-repro (main)$ uv run shakespeare.py
+giles@perry:~/Dev/karpathy-repro (main)$ cat shakespeare.py
+import torch
+
+
+lstm = torch.nn.LSTM(input_size=2, hidden_size=512, num_layers=3)
+giles@perry:~/Dev/karpathy-repro (main)$ cat pyproject.toml
+[project]
+name = "karpathy-repro"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "ipython>=9.5.0",
+    "numpy>=2.3.2",
+    "torch>=2.8.0",
+]
+```
+
+
+OK, we have working imports -- and the hidden size and num_layers match the blog post.
+
+Now, let's work out what our input size is.  We're doing characters in one-hot vectors, so it will be
+something to do with the character vocab.  Simplest possible thing would be to assume ASCII and have 128 inputs, but let's see the source
+at https://github.com/karpathy/char-rnn
+
+Note on the code that I spotted almost right away: I think he's doing the backward pass manually!  See lines 227-293 in train.lua
+
+OK, at lines 111-112 we have:
+
+local loader = CharSplitLMMinibatchLoader.create(opt.data_dir, opt.batch_size, opt.seq_length, split_sizes)
+local vocab_size = loader.vocab_size  -- the number of distinct characters
+
+...and at lines 147 onwards we create the model (it supports LSTM, GRU -- whatever that is -- and RNN) passing in vocab_size as the first parameter.
+
+So, we're dynamically working out the vocab size from the input.  Shiny!
+
+CharSplitLMMinibatchLoader is a Lua Torch thing.  Let's see what PyTorch has to offer.
+
+https://docs.pytorch.org/docs/stable/data.html looks like a good starting point.  Now, DataLoader has as its first parameter a Dataset object.
+That take us to https://docs.pytorch.org/docs/stable/data.html#torch.utils.data.Dataset.  Not much help there, though.
+
+Let's work out what his code is actually doing.  CharSplitLMMinibatchLoader is a class that he defines, in https://github.com/karpathy/char-rnn/blob/master/util/CharSplitLMMinibatchLoader.lua
+
+It looks in the given directory for a file called input.txt, and also vocab.t7 and data.t7.  These are the input text, a vocab file and
+a tensor file.  If they don't exist, it creates them with CharSplitLMMinibatchLoader.text_to_tensor.
+
+That function loads up the input file, iterates over all of the characters and puts them into a table (~=dict) called unordered where a character
+maps to true if it exists.  It also keeps track of characters read in tot_len.
+
+It then iterates over that table, and puts it into another table mapping from a number 1..N to the actual character, and then sorts that -- I assume
+by key.
+
+Finally, it swaps it around so that it's mapping character to int ID, calling that vocab_mapping.  That is what will be saved to the vocab file (this happens at the end of the
+function).  It uses torch.save for that, but it's just a lua table, not anything torch-specific.
+
+It then creates a tensor version of the input data.  It starts by creating a torch.ByteTensor (so now we're getting some useful info about how
+it handles charsets -- it doesn't!  it's actually a byte-level RNN).  The length is tot_len, which is the number of bytes in the file.  Then it opens
+the file again and iterates over the characters, and uses the vocab_mapping table to work out which int ID they have, and pops them into the tensor.
+
+Finally, it saves the vocab mapping (as I said before) and the tensor file.
+
+Well, yuk.  I don't know how much of that mess is due to lua being lua (you have to read into a buffer and manage short reads like you would in
+C, for example), and how much is academics-can't-code, but I'm sure it would be easier in Python.  Let's give that a go.
 
 
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+It then, through some
+weird and wonderful lua code, allocates an int to each one, so we have a table mapping characters to ints.
 
 
 
