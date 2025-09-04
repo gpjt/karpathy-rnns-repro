@@ -214,10 +214,10 @@ It looks in the given directory for a file called input.txt, and also vocab.t7 a
 a tensor file.  If they don't exist, it creates them with CharSplitLMMinibatchLoader.text_to_tensor.
 
 That function loads up the input file, iterates over all of the characters and puts them into a table (~=dict) called unordered where a character
-maps to true if it exists.  It also keeps track of characters read in tot_len.
+maps to true if it exists.  It also keeps track of total characters read (as in, this will wind up being the length of the file) in tot_len.
 
-It then iterates over that table, and puts it into another table mapping from a number 1..N to the actual character, and then sorts that -- I assume
-by key.
+It then iterates over that table, and puts it into another table mapping from a number 1..N to the actual character, which is a lua array.
+It then sorts that, so we have what amounts to a sorted array of all characters (1-indexed, this being lua).
 
 Finally, it swaps it around so that it's mapping character to int ID, calling that vocab_mapping.  That is what will be saved to the vocab file (this happens at the end of the
 function).  It uses torch.save for that, but it's just a lua table, not anything torch-specific.
@@ -230,6 +230,157 @@ Finally, it saves the vocab mapping (as I said before) and the tensor file.
 
 Well, yuk.  I don't know how much of that mess is due to lua being lua (you have to read into a buffer and manage short reads like you would in
 C, for example), and how much is academics-can't-code, but I'm sure it would be easier in Python.  Let's give that a go.
+
+
+OK, here's some code.
+
+giles@perry:~/Dev/karpathy-repro (main)$ cat load_data_test.py
+import time
+
+import click
+import torch
+
+
+@click.command()
+@click.argument("filename")
+def main(filename):
+    start = time.time()
+    with open(filename, "rb") as f:
+        data = f.read()
+
+    characters = set(data)
+    byte_to_id = {byte: ii for (ii, byte) in enumerate(sorted(characters))}
+    data = torch.tensor([byte_to_id[byte] for byte in data], dtype=torch.long)
+    print(time.time() - start)
+
+
+
+if __name__ == "__main__":
+    main()
+
+Important stuff:
+
+* We want our vocab to be the set of characters in the input.  IMO given that this is all bytewise, it would be easier
+  to just have a vocab of all bytes and a size of 256.
+* The IDs should be 0..N-1 where N is the vocab size, and bytes should reflect the lexicographic sort order -- eg. for the vocab ["a", "d", z"],
+  they should be ordered 0, 1, 2 in that order.  Importantly, IDs should not follow time to first encounter in the data.
+
+Apart from the 0-indexing of the token IDs to match Python standard rather than Lua's 1-indexing, this is essentially the same.  And
+I don't think it's worth stashing the output in files:
+
+giles@perry:~/Dev/karpathy-repro (main)$ uv run load_data_test.py shakespeare.txt
+0.049793243408203125
+
+0.05s to load in the whole 1.1M Shakespeare dataset.  If we were building a general tool like AK was, then it would be worthwhile, but
+we're not.
+
+NOTE: he says that the dataset he used was 4.4MiB.  Presumably a different one, sigh
+
+
+Right, once we have that data loaded, we need to put it into some kind of DataLoader for training.  ChatGPT tells me that there's no standard
+way to do this, but there is apparently a PyTorch word_language_model example which is similar.  Let's take a look.
+
+https://github.com/pytorch/examples/tree/main/word_language_model
+
+"This example trains a multi-layer RNN (Elman, GRU, or LSTM) or Transformer on a language modeling task"
+
+Sounds good.
+
+However, it looks a little low-level.  Need something more basic.  This looks solid, and very Karpathy-like: https://docs.pytorch.org/tutorials/intermediate/char_rnn_classification_tutorial?utm_source=chatgpt.com
+
+OK, here's what we need to think about.  The code there reads in a whole bunch of names, so that we can learn how to generate them.
+Each name is a self-contained dataset.
+
+What we're trying to do here is much more like training an LLM.  We don't have a set of examples per se; we have one text -- in this first case, the
+one I'm working with, it's 1.1MiB of Shakespeare.
+
+That needs to somehow be split into a series of training examples.  I'm thinking we need to break it up into sequences of a given length.
+
+K's loader takes parameters data_dir, batch_size, seq_length, split_fractions.  After the file-wrangling, we have a thing called "data" which is
+a 1-d tensor of character IDs -- that is, one per byte in the original text.  And we have vocab_mapping, which is the mapping from chars to IDs.  (I assume
+he generates the inverse mapping later).
+
+Next, we have this:
+
+    local len = data:size(1)
+    if len % (batch_size * seq_length) ~= 0 then
+        print('cutting off end of data so that the batches/sequences divide evenly')
+        data = data:sub(1, batch_size * seq_length
+                    * math.floor(len / (batch_size * seq_length)))
+    end
+
+
+So: we have a standardised sequence length, and a batch size.  We chop off all data to ignore anything after batch_size * seq_length.
+Seems wasteful -- I'm sure we could do better with some kind of incomplete batch, perhaps overlapping sequences, maybe padded ones at the end.
+But perhaps that doesn't matter.
+
+Had a chat with ChatGPT about this.  Here's the explanation I came up with, which it approved of:
+
+----
+We have a file of (say) 50,001 characters.
+
+We split into 1,000 chunks of Xs, each 50 characters long, and 1,000 chunks of Ys, each of which is 50 characters long (and is the shifted-right letters that correspond to the Xs).
+
+We run the sample X_1 through the RNN, and then calculate loss against Y_1.
+
+We then backprop, which naturally goes through 50 layers'-worth of unrolling.
+
+We then clear out our gradients, but we do *not* clear out the hidden state.  It is, however, "detached" in some way so that gradients don't keep flowing back.
+
+Now we run X_2 through the RNN, and calculate loss against Y_2. Backprop again, 50 layers again. Rinse and repeat.
+----
+
+In my mind, this means that the RNN is learning how to deal with a complex hidden state with all kinds of stuff in it,
+and it's learning how to generate that state, but it only learns how to update the state based on the sequence length,
+and only learns how 50 characters of stuff might be affected by it.
+
+Need to think about that a bit.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
