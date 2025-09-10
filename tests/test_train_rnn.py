@@ -1,10 +1,12 @@
+import tempfile
+from pathlib import Path
 from unittest import TestCase
 
 import torch
 from torch.testing import assert_close
 from torch.utils.data import Dataset
 
-from train_rnn import NextByteDataset
+from train_rnn import NextByteDataset, read_corpus_bytes
 
 
 class NextByteDatasetTest(TestCase):
@@ -91,4 +93,23 @@ class NextByteDatasetTest(TestCase):
         self.assertEqual(ys, b"da")
         assert_close(y_ids, torch.tensor([1, 0], dtype=torch.long))
 
+
+class ReadCorpusBytesTest(TestCase):
+
+    def test_barfs_if_not_input_txt_in_provided_directory(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            with self.assertRaises(FileNotFoundError):
+                read_corpus_bytes(tmp_dir)
+
+
+
+    def test_reads_bytes_from_input_txt_in_provided_directory(self):
+        some_bytes = b"sajdkfl\xff\x00\x80\x80fjdsalfsjkldjksfldjfds"
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            (tmp_path / "input.txt").write_bytes(some_bytes)
+
+            data = read_corpus_bytes(tmp_dir)
+
+            self.assertEqual(data, some_bytes)
 

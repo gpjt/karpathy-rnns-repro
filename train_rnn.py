@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import torch
 from torch.utils.data import Dataset
 
@@ -46,4 +48,7 @@ class NextByteDataset(Dataset):
         return x_ids, y_ids, xs, ys
 
 
+def read_corpus_bytes(directory):
+    path = Path(directory) / "input.txt"
+    return path.read_bytes()
 
