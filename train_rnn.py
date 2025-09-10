@@ -1,4 +1,7 @@
+import time
 from pathlib import Path
+
+import click
 
 import torch
 from torch.utils.data import Dataset
@@ -52,3 +55,18 @@ def read_corpus_bytes(directory):
     path = Path(directory) / "input.txt"
     return path.read_bytes()
 
+
+@click.command()
+@click.argument("directory")
+@click.argument("seq_length", type=int)
+def main(directory, seq_length):
+    start = time.time()
+    dataset = NextByteDataset(read_corpus_bytes(directory), seq_length)
+    print(time.time() - start)
+
+    print(len(dataset))
+    print(dataset[0])
+
+
+if __name__ == "__main__":
+    main()
