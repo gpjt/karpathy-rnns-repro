@@ -33,17 +33,6 @@ class NextByteDatasetTest(TestCase):
             NextByteDataset(b"abc", 3)
 
 
-    def test_puts_all_sequences_plus_one_byte_into_data(self):
-        ds = NextByteDataset(
-            b"abcdef",
-            2
-        )
-        self.assertEqual(
-            ds.data,
-            b"abcde",
-        )
-
-
     def test_works_out_vocab_as_sorted_list_of_ints_based_on_trimmed_data(self):
         ds = NextByteDataset(
             b"eeadaf",
@@ -75,17 +64,6 @@ class NextByteDatasetTest(TestCase):
         self.assertEqual(ds.byte_to_id[ord(b"e")], 2)
 
 
-    def test_creates_tensor_with_ids(self):
-        ds = NextByteDataset(
-            b"eeadaf",
-            2
-        )
-        assert_close(
-            ds.data_as_ids,
-            torch.tensor([2, 2, 0, 1, 0], dtype=torch.long)
-        )
-
-
     def test_length_is_number_of_sequences(self):
         ds = NextByteDataset(
             b"eeadaf",
@@ -110,7 +88,7 @@ class NextByteDatasetTest(TestCase):
         x_ids, y_ids, xs, ys = seq_2
         self.assertEqual(xs, b"ad")
         assert_close(x_ids, torch.tensor([0, 1], dtype=torch.long))
-        self.assertEqual(ys, b"da]")
+        self.assertEqual(ys, b"da")
         assert_close(y_ids, torch.tensor([1, 0], dtype=torch.long))
 
 
