@@ -8,7 +8,7 @@ Read through, there's a lot there!
 
 # Recurrent Neural Networks
 
-Diffs between VNNs and CNNs and RNNs: fixed-size input vector.  Interestingly, LLMs have a fixed-size input -- the context length.
+Diffs between (VanillaNNs and CNNs) and RNNs: fixed-size input vector.  Interestingly, LLMs have a fixed-size input -- the context length.
 Likewise fixed number of computational steps.  This is touted as an advantage, though of course there's no real value in
 spending as long completing "the fat cat sat on the mat" as you do completing a 100k token chat transcript.
 
@@ -452,6 +452,85 @@ exposes an issue -- how can we get a solid test set?  I'm thinking maybe just ho
 Vague discussion with ChatGPT, and that leads to another point: what do we do with batches?  We need some kind of continuous threads going through.
 
 Thought: perhaps we need to be breaking out into batches inside the dataloader?  That's what K seems to be doing.  Need to read and understand the code better.
+
+
+20205-09-10
+Back to it.  Looking at the CharSplitLMMinibatchLoader, it takes the dir to load the data from, the batch size, the sequence length, and the split fractions
+(train/test/eval).
+
+It then loads the data into an xs array of tensors, and generates the y's as a shifted copy of the xs
+
+Then it generates its batches!  Considering just xs, we do this:
+
+self.x_batches = data:view(batch_size, -1):split(seq_length, 2)  -- #rows = #batches
+
+The last bit is a comment.
+
+Working through it bit by bit:
+
+data:view(batch_size, -1)
+
+We slice our data into batch_size contiguous sequences.  If we had infinite sequence length, then our batch would be exactly this:
+we'd train on all of those sequences in parallel.  Imagine
+
+[t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11]
+
+...then our batched inputs would be this:
+
+[[t0 t1 t2 t3]
+ [t4 t5 t6 t7]
+ [t8 t9 t10 t11]]
+
+Now we want to reshape again to get sequences.  Imagine our sequence length was 2.  We'd want to train on [t0, t1], backprop, then
+keep the hidden state and train on [t2, t3] and then backprop again.  In parallel (with a different hidden state) we'd want to
+train on [t4, t5], backprop, [t6, t7].
+
+The split(seq_length, 2) means "split the second dimension into seq_length-long bits".  I'm somewhat struggling to conceptualise that.
+
+Let's look at the result.  It's this:
+
+[
+    [
+        [t0 t1]
+        [t4 t5]
+        [ti t9]
+    ]
+    [
+        [t2 t2]
+        [t6 t7]
+        [t10 t11]
+    ]
+]
+
+So that does indeed give us two batches such that we can train on it.
+
+Need to work on this to get a better intuition, but I can at least see that it works.
+
+Anyway, this fights against the Dataset abstraction that would normally be used with PyTorch -- it breaks things
+up into sequences first.
+
+But!  We know that sequence i is contiguous with i+1.
+
+So, what say we divide our sequences into batch_size sections.  Each of these is a coherent training set.  We can drop the
+extras.
+
+We then "stack them" vertically.
+
+Now we have an array like the one we want, and we can split that into train, val, test sets.
+
+OK, let's try doing that but TDD.  I'll backfill tests for NextByteDataset first.
+
+
+
+
+
+
+
+
+What that means is that first it splits the xs into contiguous slices
+
+But then we split
+
 
 
 
