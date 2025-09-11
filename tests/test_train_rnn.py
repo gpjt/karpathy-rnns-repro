@@ -242,13 +242,42 @@ class BatchifyTest(TestCase):
             self.assertEqual(actual_ys_raw, expected_ys_raw)
 
 
-    def test_x_and_y_raw_stuff(self):
-        self.fail("TODO")
-
-
     def test_dataset_not_an_even_number_of_batches(self):
-        self.fail("TODO")
+        dataset = [
+            (torch.tensor([1], dtype=torch.long),
+             torch.tensor([2], dtype=torch.long),
+             b"xs1",
+             b"ys1"),
+            (torch.tensor([3], dtype=torch.long),
+             torch.tensor([4], dtype=torch.long),
+             b"xs2",
+             b"ys2"),
+            (torch.tensor([5], dtype=torch.long),
+             torch.tensor([6], dtype=torch.long),
+             b"xs3",
+             b"ys3"),
+        ]
 
+        batches = batchify(dataset, batch_size=2)
+
+        # With 3 items and batch_size=2, we only get 1 full batch
+        expected = [
+            (
+                torch.tensor([[1], [3]], dtype=torch.long),
+                torch.tensor([[2], [4]], dtype=torch.long),
+                [b"xs1", b"xs2"],
+                [b"ys1", b"ys2"],
+            )
+        ]
+
+        self.assertEqual(len(batches), len(expected))
+        (actual_x, actual_y, actual_xs_raw, actual_ys_raw), \
+        (expected_x, expected_y, expected_xs_raw, expected_ys_raw) = batches[0], expected[0]
+
+        assert_close(actual_x, expected_x)
+        assert_close(actual_y, expected_y)
+        self.assertEqual(actual_xs_raw, expected_xs_raw)
+        self.assertEqual(actual_ys_raw, expected_ys_raw)
 
 
 
