@@ -122,38 +122,38 @@ class BatchifyTest(TestCase):
             (
                 torch.tensor([ 1,  2,  3,  4], dtype=torch.long),
                 torch.tensor([ 2,  3,  4,  5], dtype=torch.long),
-                "Sequence 1 xs",
-                "Sequence 1 ys",
+                b"Sequence 1 xs",
+                b"Sequence 1 ys",
             ),
             (
                 torch.tensor([ 5,  6,  7,  8], dtype=torch.long),
                 torch.tensor([ 6,  7,  8,  9], dtype=torch.long),
-                "Sequence 2 xs",
-                "Sequence 2 ys",
+                b"Sequence 2 xs",
+                b"Sequence 2 ys",
             ),
             (
                 torch.tensor([ 9, 10, 11, 12], dtype=torch.long),
                 torch.tensor([10, 11, 12, 13], dtype=torch.long),
-                "Sequence 3 xs",
-                "Sequence 3 ys",
+                b"Sequence 3 xs",
+                b"Sequence 3 ys",
             ),
             (
                 torch.tensor([13, 14, 15, 16], dtype=torch.long),
                 torch.tensor([14, 15, 16, 17], dtype=torch.long),
-                "Sequence 4 xs",
-                "Sequence 4 ys",
+                b"Sequence 4 xs",
+                b"Sequence 4 ys",
             ),
             (
                 torch.tensor([17, 18, 19, 20], dtype=torch.long),
                 torch.tensor([18, 19, 20, 21], dtype=torch.long),
-                "Sequence 5 xs",
-                "Sequence 5 ys",
+                b"Sequence 5 xs",
+                b"Sequence 5 ys",
             ),
             (
                 torch.tensor([21, 22, 23, 24], dtype=torch.long),
                 torch.tensor([22, 23, 24, 25], dtype=torch.long),
-                "Sequence 6 xs",
-                "Sequence 6 ys",
+                b"Sequence 6 xs",
+                b"Sequence 6 ys",
             ),
         ]
 
@@ -165,42 +165,81 @@ class BatchifyTest(TestCase):
         # positions.
         expected = [
             (
-                torch.tensor([
-                    [ 1,  2,  3,  4],
-                    [ 9, 10, 11, 12],
-                    [17, 18, 19, 20],
-                ]),
-                torch.tensor([
-                    [ 2,  3,  4,  5],
-                    [10, 11, 12, 13],
-                    [18, 19, 20, 21],
-                ]),
+                torch.tensor(
+                    [
+                        [ 1,  2,  3,  4],
+                        [ 9, 10, 11, 12],
+                        [17, 18, 19, 20],
+                    ],
+                    dtype=torch.long
+                ),
+                torch.tensor(
+                    [
+                        [ 2,  3,  4,  5],
+                        [10, 11, 12, 13],
+                        [18, 19, 20, 21],
+                    ],
+                    dtype=torch.long
+                ),
+                [
+                    b"Sequence 1 xs",
+                    b"Sequence 3 xs",
+                    b"Sequence 5 xs"
+                ],
+                [
+                    b"Sequence 1 ys",
+                    b"Sequence 3 ys",
+                    b"Sequence 5 ys"
+                ],
             ),
             (
-                torch.tensor([
-                    [ 5,  6,  7,  8],
-                    [13, 14, 15, 16],
-                    [21, 22, 23, 24],
-                ]),
-                torch.tensor([
-                    [ 6,  7,  8,  9],
-                    [14, 15, 16, 17],
-                    [22, 23, 24, 25],
-                ]),
+                torch.tensor(
+                    [
+                        [ 5,  6,  7,  8],
+                        [13, 14, 15, 16],
+                        [21, 22, 23, 24],
+                    ],
+                    dtype=torch.long
+                ),
+                torch.tensor(
+                    [
+                        [ 6,  7,  8,  9],
+                        [14, 15, 16, 17],
+                        [22, 23, 24, 25],
+                    ],
+                    dtype=torch.long
+                ),
+                [
+                    b"Sequence 2 xs",
+                    b"Sequence 4 xs",
+                    b"Sequence 6 xs"
+                ],
+                [
+                    b"Sequence 2 ys",
+                    b"Sequence 4 ys",
+                    b"Sequence 6 ys"
+                ],
             ),
         ]
 
         # Sadly a simple assertEqual doesn't work with lists containing Tensors, but hopefully this
         # is clear enough.
         self.assertEqual(len(batches), len(expected))
-        for (actual_x, actual_y), (expected_x, expected_y) in zip(batches, expected):
+        for (actual_x, actual_y, actual_xs_raw, actual_ys_raw), (expected_x, expected_y, expected_xs_raw, expected_ys_raw) in zip(batches, expected):
+
+            # shapes / dtypes for tensors
             self.assertEqual(actual_x.shape, expected_x.shape)
             self.assertEqual(actual_y.shape, expected_y.shape)
             self.assertEqual(actual_x.dtype, torch.long)
             self.assertEqual(actual_y.dtype, torch.long)
 
+            # tensor values
             assert_close(actual_x, expected_x)
             assert_close(actual_y, expected_y)
+
+            # raw fields (lists of bytes)
+            self.assertEqual(actual_xs_raw, expected_xs_raw)
+            self.assertEqual(actual_ys_raw, expected_ys_raw)
 
 
     def test_x_and_y_raw_stuff(self):

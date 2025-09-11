@@ -62,15 +62,21 @@ def batchify(dataset, batch_size):
     batches = []
     for batch_num in range(num_batches):
         batch_x_ids_list = []
+        batch_xs_list = []
         batch_y_ids_list = []
+        batch_ys_list = []
         for batch_position in range(batch_size):
             item = dataset[batch_num + batch_position * num_batches]
-            x_ids, y_ids, _, __ = item
+            x_ids, y_ids, xs, ys = item
             batch_x_ids_list.append(x_ids)
+            batch_xs_list.append(xs)
             batch_y_ids_list.append(y_ids)
+            batch_ys_list.append(ys)
         batches.append((
             torch.stack(batch_x_ids_list),
-            torch.stack(batch_y_ids_list)
+            torch.stack(batch_y_ids_list),
+            batch_xs_list,
+            batch_ys_list,
         ))
     return batches
 
