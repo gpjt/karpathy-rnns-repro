@@ -56,6 +56,27 @@ def read_corpus_bytes(directory):
     return path.read_bytes()
 
 
+def batchify(dataset, batch_size):
+    num_batches = len(dataset) // batch_size
+
+    batches = []
+    for batch_num in range(num_batches):
+        batch_x_ids_list = []
+        batch_y_ids_list = []
+        for batch_position in range(batch_size):
+            item = dataset[batch_num + batch_position * num_batches]
+            x_ids, y_ids, _, __ = item
+            batch_x_ids_list.append(x_ids)
+            batch_y_ids_list.append(y_ids)
+        batches.append((
+            torch.stack(batch_x_ids_list),
+            torch.stack(batch_y_ids_list)
+        ))
+    return batches
+
+
+
+
 @click.command()
 @click.argument("directory")
 @click.argument("seq_length", type=int)
@@ -66,6 +87,7 @@ def main(directory, seq_length):
 
     print(len(dataset))
     print(dataset[0])
+    print(dataset[1])
 
 
 if __name__ == "__main__":
