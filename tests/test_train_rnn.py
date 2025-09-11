@@ -117,6 +117,37 @@ class ReadCorpusBytesTest(TestCase):
 
 class BatchifyTest(TestCase):
 
+    def assertBatchedDatasetsEqual(self, actual, expected):
+        # Sadly a simple assertEqual doesn't work with lists containing Tensors, but hopefully this
+        # is clear enough.
+
+        self.assertEqual(len(actual), len(expected), "Number of batches mismatch")
+        for i, (a, e) in enumerate(zip(actual, expected)):
+            # Unpack flexibly: allow 2-tuple (ids only) or 4-tuple (ids + raw)
+            self.assertIn(len(a), (2, 4), f"Unexpected tuple length in actual batch {i}")
+            self.assertIn(len(e), (2, 4), f"Unexpected tuple length in expected batch {i}")
+
+            ax, ay, *a_raw = a
+            ex, ey, *e_raw = e
+
+            # shapes/dtypes
+            self.assertEqual(ax.shape, ex.shape, f"x shape mismatch in batch {i}")
+            self.assertEqual(ay.shape, ey.shape, f"y shape mismatch in batch {i}")
+            self.assertEqual(ax.dtype, ex.dtype, f"x dtype mismatch in batch {i}")
+            self.assertEqual(ay.dtype, ey.dtype, f"y dtype mismatch in batch {i}")
+
+            # values
+            assert_close(ax, ex, msg=f"x values mismatch in batch {i}")
+            assert_close(ay, ey, msg=f"y values mismatch in batch {i}")
+
+            # raw fields present in both or neither
+            self.assertEqual(len(a_raw), len(e_raw), f"raw field presence differs in batch {i}")
+            if a_raw and e_raw:
+                (axs_raw, ays_raw), (exs_raw, eys_raw) = a_raw, e_raw
+                self.assertEqual(axs_raw, exs_raw, f"xs_raw mismatch in batch {i}")
+                self.assertEqual(ays_raw, eys_raw, f"ys_raw mismatch in batch {i}")
+
+
     def test_sequences_are_contiguous_across_positions_in_batches(self):
         dataset = [
             (
@@ -222,24 +253,7 @@ class BatchifyTest(TestCase):
             ),
         ]
 
-        # Sadly a simple assertEqual doesn't work with lists containing Tensors, but hopefully this
-        # is clear enough.
-        self.assertEqual(len(batches), len(expected))
-        for (actual_x, actual_y, actual_xs_raw, actual_ys_raw), (expected_x, expected_y, expected_xs_raw, expected_ys_raw) in zip(batches, expected):
-
-            # shapes / dtypes for tensors
-            self.assertEqual(actual_x.shape, expected_x.shape)
-            self.assertEqual(actual_y.shape, expected_y.shape)
-            self.assertEqual(actual_x.dtype, torch.long)
-            self.assertEqual(actual_y.dtype, torch.long)
-
-            # tensor values
-            assert_close(actual_x, expected_x)
-            assert_close(actual_y, expected_y)
-
-            # raw fields (lists of bytes)
-            self.assertEqual(actual_xs_raw, expected_xs_raw)
-            self.assertEqual(actual_ys_raw, expected_ys_raw)
+        self.assertBatchedDatasetsEqual(batches, expected)
 
 
     def test_dataset_not_an_even_number_of_batches(self):
@@ -270,14 +284,7 @@ class BatchifyTest(TestCase):
             )
         ]
 
-        self.assertEqual(len(batches), len(expected))
-        (actual_x, actual_y, actual_xs_raw, actual_ys_raw), \
-        (expected_x, expected_y, expected_xs_raw, expected_ys_raw) = batches[0], expected[0]
-
-        assert_close(actual_x, expected_x)
-        assert_close(actual_y, expected_y)
-        self.assertEqual(actual_xs_raw, expected_xs_raw)
-        self.assertEqual(actual_ys_raw, expected_ys_raw)
+        self.assertBatchedDatasetsEqual(batches, expected)
 
 
 
