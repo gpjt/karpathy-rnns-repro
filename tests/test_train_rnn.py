@@ -118,53 +118,93 @@ class ReadCorpusBytesTest(TestCase):
 class BatchifyTest(TestCase):
 
     def test_sequences_are_contiguous_across_positions_in_batches(self):
-        seq_length = 4
-        batch_size = 3
-        num_batches = 4
-        dataset_total_length = seq_length * batch_size * num_batches
+        dataset = [
+            (
+                torch.tensor([ 1,  2,  3,  4], dtype=torch.long),
+                torch.tensor([ 2,  3,  4,  5], dtype=torch.long),
+                "Sequence 1 xs",
+                "Sequence 1 ys",
+            ),
+            (
+                torch.tensor([ 5,  6,  7,  8], dtype=torch.long),
+                torch.tensor([ 6,  7,  8,  9], dtype=torch.long),
+                "Sequence 2 xs",
+                "Sequence 2 ys",
+            ),
+            (
+                torch.tensor([ 9, 10, 11, 12], dtype=torch.long),
+                torch.tensor([10, 11, 12, 13], dtype=torch.long),
+                "Sequence 3 xs",
+                "Sequence 3 ys",
+            ),
+            (
+                torch.tensor([13, 14, 15, 16], dtype=torch.long),
+                torch.tensor([14, 15, 16, 17], dtype=torch.long),
+                "Sequence 4 xs",
+                "Sequence 4 ys",
+            ),
+            (
+                torch.tensor([17, 18, 19, 20], dtype=torch.long),
+                torch.tensor([18, 19, 20, 21], dtype=torch.long),
+                "Sequence 5 xs",
+                "Sequence 5 ys",
+            ),
+            (
+                torch.tensor([21, 22, 23, 24], dtype=torch.long),
+                torch.tensor([22, 23, 24, 25], dtype=torch.long),
+                "Sequence 6 xs",
+                "Sequence 6 ys",
+            ),
+        ]
 
-        dataset_total_x_ids = torch.tensor(range(0, dataset_total_length), dtype=torch.long)
-        dataset_total_y_ids = torch.tensor(range(1, dataset_total_length + 1), dtype=torch.long)
-
-        test_x_ids = dataset_total_x_ids.split(seq_length)
-        test_y_ids = dataset_total_y_ids.split(seq_length)
-
-        dataset = [(xs, ys, f"Xs {ii}".encode(), f"Ys {ii}".encode()) for (ii, (xs, ys)) in enumerate(zip(test_x_ids, test_y_ids))]
-
-        batches = batchify(dataset, batch_size)
-
-        self.assertEqual(len(batches), num_batches)
+        batches = batchify(dataset, batch_size=3)
 
         # What we want is for all of the xs at position 0 in each
         # batch to be a contiguous sequence from the original xs,
         # and likewise for the ys, and so on for all other batch
         # positions.
-        batch_x_sequences = [[] for _ in range(batch_size)]
-        batch_y_sequences = [[] for _ in range(batch_size)]
-        for batch_xs, batch_ys in batches:
-            self.assertEqual(batch_xs.dtype, torch.long)
-            self.assertEqual(batch_xs.shape, (batch_size, seq_length))
-            self.assertEqual(batch_ys.dtype, torch.long)
-            self.assertEqual(batch_ys.shape, (batch_size, seq_length))
-            for ii, item in enumerate(batch_xs):
-                batch_x_sequences[ii].append(item)
-            for ii, item in enumerate(batch_ys):
-                batch_y_sequences[ii].append(item)
+        expected = [
+            (
+                torch.tensor([
+                    [ 1,  2,  3,  4],
+                    [ 9, 10, 11, 12],
+                    [17, 18, 19, 20],
+                ]),
+                torch.tensor([
+                    [ 2,  3,  4,  5],
+                    [10, 11, 12, 13],
+                    [18, 19, 20, 21],
+                ]),
+            ),
+            (
+                torch.tensor([
+                    [ 5,  6,  7,  8],
+                    [13, 14, 15, 16],
+                    [21, 22, 23, 24],
+                ]),
+                torch.tensor([
+                    [ 6,  7,  8,  9],
+                    [14, 15, 16, 17],
+                    [22, 23, 24, 25],
+                ]),
+            ),
+        ]
 
-        for batch_position, batch_x_sequence in enumerate(batch_x_sequences):
-            sequences_for_position = torch.stack(batch_x_sequence)
-            start_in_original = batch_position * num_batches
-            assert_close(
-                sequences_for_position,
-                torch.stack(test_x_ids[start_in_original:start_in_original + num_batches])
-            )
-        for batch_position, batch_y_sequence in enumerate(batch_y_sequences):
-            sequences_for_position = torch.stack(batch_y_sequence)
-            start_in_original = batch_position * num_batches
-            assert_close(
-                sequences_for_position,
-                torch.stack(test_y_ids[start_in_original:start_in_original + num_batches])
-            )
+        # Sadly a simple assertEqual doesn't work with lists containing Tensors, but hopefully this
+        # is clear enough.
+        self.assertEqual(len(batches), len(expected))
+        for (actual_x, actual_y), (expected_x, expected_y) in zip(batches, expected):
+            self.assertEqual(actual_x.shape, expected_x.shape)
+            self.assertEqual(actual_y.shape, expected_y.shape)
+            self.assertEqual(actual_x.dtype, torch.long)
+            self.assertEqual(actual_y.dtype, torch.long)
+
+            assert_close(actual_x, expected_x)
+            assert_close(actual_y, expected_y)
+
+
+    def test_x_and_y_raw_stuff(self):
+        self.fail("TODO")
 
 
     def test_dataset_not_an_even_number_of_batches(self):

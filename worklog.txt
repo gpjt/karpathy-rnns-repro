@@ -520,16 +520,16 @@ Now we have an array like the one we want, and we can split that into train, val
 
 OK, let's try doing that but TDD.  I'll backfill tests for NextByteDataset first.
 
+---
 
+Later: got working tests!  A bit messy though.
 
+2025-09-11
 
+Overnight, had a good idea on how to make the tests better -- raster-scan the batched sequences
+to make sure that they map to the input
 
-
-
-
-What that means is that first it splits the xs into contiguous slices
-
-But then we split
+But after a bit more thought, unit tests are easier to understand with static input/output.  So will recode to do that.
 
 
 
