@@ -531,6 +531,13 @@ to make sure that they map to the input
 
 But after a bit more thought, unit tests are easier to understand with static input/output.  So will recode to do that.
 
+Done, with ChatGPT doing much of the grunt work.
+
+Happy with the result.  On to the training loop!
+
+
+
+
 
 
 
