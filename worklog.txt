@@ -73,6 +73,9 @@ Might be worth a post or at least a callout somewhere later in the LLM from scra
 how the distribution changes.
 
 
+Another thing to call out: "dropout of 0.5 after each layer".  Yikes!
+
+
 Other examples interesting but not much to learn there.
 
 
@@ -535,7 +538,30 @@ Done, with ChatGPT doing much of the grunt work.
 
 Happy with the result.  On to the training loop!
 
+Talking through it with ChatGPT.  It (as it was previously) is very keen on adding an embedding layer at the
+start of the RNN.  It says:
 
+> In PyTorch terms, that means his “input layer” is effectively an nn.Embedding(vocab_size, vocab_size) fixed to be an identity matrix.
+
+I'm guessing that a learned embedding is somehow more efficient.
+
+Let's leave that as one-hots, anyway.  In the models/LSTM.lua, I see that he's doing it there as a special case at
+layer 1:
+
+```
+    if L == 1 then
+      x = OneHot(input_size)(inputs[1])
+      input_size_L = input_size
+    else
+```
+
+Convo with ChatGPT:
+
+https://chatgpt.com/c/68c300ed-63a8-8320-80b1-670368821de5
+
+After much back and forth, we got started.  Kicked off trying to do TDD with a new KarpathyLSTM PyTorch module.
+Got an initial test for the interface, no implementation (not even DTDDTCPW) -- just enough to get it to crap
+out because there's no return value from forward.
 
 
 

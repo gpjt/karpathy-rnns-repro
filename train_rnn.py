@@ -4,6 +4,7 @@ from pathlib import Path
 import click
 
 import torch
+import torch.nn as nn
 from torch.utils.data import Dataset
 
 
@@ -79,6 +80,17 @@ def batchify(dataset, batch_size):
             batch_ys_list,
         ))
     return batches
+
+
+
+class KarpathyLSTM(nn.Module):
+
+    def __init__(self, vocab_size, hidden_size, num_layers, dropout):
+        super().__init__()
+
+
+    def forward(self, x):
+        ...
 
 
 
