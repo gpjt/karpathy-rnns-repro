@@ -564,6 +564,19 @@ Got an initial test for the interface, no implementation (not even DTDDTCPW) -- 
 out because there's no return value from forward.
 
 
+---
+
+2025-09-17
+
+Thinking about it, we don't need unit tests for this bit.  They were super-useful for our dataset because I
+wanted to get that raster-scanning stuff working.  But this bit is just a "do things in order" module and we
+can just hack it.
+
+Did that; ChatGPT suggested a nice complete class for the KarpathyLSTM but I trimmed it to the bare minimum.
+
+
+
+
 
 
 
