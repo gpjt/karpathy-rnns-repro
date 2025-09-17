@@ -1,9 +1,13 @@
+import torch
+
+
 class NextByteTokenizer:
 
     def __init__(self, id_to_byte):
         self.id_to_byte = id_to_byte
         self.vocab = id_to_byte
         self._byte_to_id = None
+
 
     @property
     def byte_to_id(self):
@@ -13,4 +17,11 @@ class NextByteTokenizer:
                 for (ii, byte) in enumerate(self.id_to_byte)
             }
         return self._byte_to_id
+
+
+    def encode(self, byte_sequence):
+        return torch.tensor(
+            [self.byte_to_id[b] for b in byte_sequence],
+            dtype=torch.long
+        )
 

@@ -7,10 +7,7 @@ def generate_sample_text(model, tokenizer, length, temperature=0):
     with torch.no_grad():
         model.eval()
         hidden_state = None
-        primer = torch.tensor(
-            [[tokenizer.byte_to_id[random.choice(tokenizer.vocab)]]],
-            dtype=torch.long
-        )
+        primer = tokenizer.encode([random.choice(tokenizer.vocab)]).unsqueeze(0)
         primer = primer.to(next(model.parameters()).device)
 
         y_logits, hidden_state = model(primer)
