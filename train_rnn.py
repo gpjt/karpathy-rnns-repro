@@ -120,9 +120,46 @@ class KarpathyLSTM(nn.Module):
         return logits, new_state
 
 
-def train(model, train_batches, val_batches):
+def calculate_loss(y_logits, target_y_ids):
+    return F.cross_entropy(y_logits.flatten(0, 1), target_y_ids.flatten())
+
+
+def train(model, train_batches, val_batches, epochs):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
+
+    optimizer = torch.optim.AdamW(
+        model.parameters(),
+        lr=3e-4,
+    )
+
+    for epoch in range(epochs):
+        model.train()
+        hidden_state = None
+        for x_ids, target_y_ids, xs, ys in train_batches:
+            x_ids = x_ids.to(device)
+            target_y_ids = target_y_ids.to(device)
+            if hidden_state:
+                h_n, c_n = hidden_state
+                hidden_state = (h_n.detach(), c_n.detach())
+                y_logits, hidden_state = model(x_ids, hidden_state)
+            else:
+                y_logits, hidden_state = model(x_ids)
+            train_loss = calculate_loss(y_logits, target_y_ids)
+            train_loss.backward()
+
+            optimizer.step()
+
+            print(f"Epoch {epoch}, train loss is {train_loss}")
+
+        ## Do we need no_grad for this?
+        model.eval()
+        hidden_state = None
+        for x_ids, target_y_ids in val_batches:
+            y_logits = model(x_ids, hidden_state)
+        val_loss = calculate_loss(y_logits, target_y_ids)
+        print(f"Epoch {epoch}, validation loss is {val_loss}")
+
 
 
 
@@ -136,7 +173,8 @@ VAL_BATCH_PERCENT = 5
 @click.argument("directory")
 @click.argument("seq_length", type=int)
 @click.argument("batch_size", type=int)
-def main(directory, seq_length, batch_size):
+@click.argument("epochs", type=int)
+def main(directory, seq_length, batch_size, epochs):
     start = time.time()
     dataset = NextByteDataset(read_corpus_bytes(directory), seq_length)
     print(time.time() - start)
@@ -160,7 +198,7 @@ def main(directory, seq_length, batch_size):
 
     model = KarpathyLSTM(vocab_size=len(dataset.vocab), hidden_size=512, num_layers=3, dropout=0.5)
 
-    train(model, train_batches, val_batches)
+    train(model, train_batches, val_batches, epochs)
 
 
 
