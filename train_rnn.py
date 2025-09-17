@@ -100,7 +100,7 @@ def main(directory, seq_length, batch_size, epochs):
     val_batches = batches[train_batch_count:]
     print(f"We have {len(train_batches)} training batches and {len(val_batches)} validation batches")
 
-    model = KarpathyLSTM(vocab_size=len(dataset.tokenizer.vocab), hidden_size=512, num_layers=3, dropout=0.5)
+    model = KarpathyLSTM(vocab_size=dataset.tokenizer.vocab_size, hidden_size=512, num_layers=3, dropout=0.5)
 
     train(model, dataset.tokenizer, train_batches, val_batches, epochs)
 

@@ -36,17 +36,6 @@ class NextByteDatasetTest(TestCase):
             NextByteDataset(b"abc", 3)
 
 
-    def test_works_out_vocab_as_sorted_list_of_ints_based_on_trimmed_data(self):
-        ds = NextByteDataset(
-            b"eeadaf",
-            2
-        )
-        self.assertEqual(
-            ds.tokenizer.vocab,
-            list(b"ade"),
-        )
-
-
     def test_works_out_id_to_byte_mapping_with_bytes_as_ints(self):
         ds = NextByteDataset(
             b"eeadaf",
