@@ -142,7 +142,7 @@ def train(model, train_batches, val_batches, epochs):
         for x_ids, target_y_ids, xs, ys in tqdm(train_batches):
             x_ids = x_ids.to(device)
             target_y_ids = target_y_ids.to(device)
-            if hidden_state:
+            if hidden_state is not None:
                 h_n, c_n = hidden_state
                 hidden_state = (h_n.detach(), c_n.detach())
                 y_logits, hidden_state = model(x_ids, hidden_state)
