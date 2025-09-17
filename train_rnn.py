@@ -156,7 +156,9 @@ def train(model, train_batches, val_batches, epochs):
         ## Do we need no_grad for this?
         model.eval()
         hidden_state = None
-        for x_ids, target_y_ids, xs, ys in val_batches:
+        for x_ids, target_y_ids, xs, ys in tqdm(val_batches):
+            x_ids = x_ids.to(device)
+            target_y_ids = target_y_ids.to(device)
             y_logits, hidden_state = model(x_ids, hidden_state)
         val_loss = calculate_loss(y_logits, target_y_ids)
         print(f"Epoch {epoch}, validation loss is {val_loss}")
