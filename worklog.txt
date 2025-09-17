@@ -574,6 +574,20 @@ can just hack it.
 
 Did that; ChatGPT suggested a nice complete class for the KarpathyLSTM but I trimmed it to the bare minimum.
 
+A bit more work on a training loop, and kicked it off.  It worked!
+
+Gem from an early run, at iteration 6/10 on Karpathy's small Shakespeare data set:
+
+r to.\n\nDUCHETHORD:\nWill you way, the ganst undingicest him\nIt death before thy ass, his byst the que
+
+Downloaded the complete Shakespeare from Project Gutenberg at https://www.gutenberg.org/ebooks/100, stripped
+the front/end matter and trained on that.  Looks like loss is dropping better (which makes sense, larger dataset, 5MiB vs
+1 or so
+
+Right, we need to be able to checkpoint this.
+
+First step, let's refactor things a bit to tidy up.
+
 
 
 
