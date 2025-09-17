@@ -1,6 +1,3 @@
-import random
-import time
-
 import click
 from tqdm import tqdm
 
@@ -90,14 +87,7 @@ VAL_BATCH_PERCENT = 5
 @click.argument("batch_size", type=int)
 @click.argument("epochs", type=int)
 def main(directory, seq_length, batch_size, epochs):
-    start = time.time()
     dataset = NextByteDataset(read_corpus_bytes(directory), seq_length)
-    print(time.time() - start)
-
-    print(len(dataset))
-    print(dataset[0])
-    print(dataset[1])
-
     batches = batchify(dataset, batch_size)
 
     val_batch_count = int(len(batches) * (VAL_BATCH_PERCENT / 100))
@@ -108,7 +98,6 @@ def main(directory, seq_length, batch_size, epochs):
 
     train_batches = batches[0:train_batch_count]
     val_batches = batches[train_batch_count:]
-
     print(f"We have {len(train_batches)} training batches and {len(val_batches)} validation batches")
 
     model = KarpathyLSTM(vocab_size=len(dataset.vocab), hidden_size=512, num_layers=3, dropout=0.5)
