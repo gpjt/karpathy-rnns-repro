@@ -149,14 +149,15 @@ def train(model, train_batches, val_batches, epochs):
             train_loss.backward()
 
             optimizer.step()
+            optimizer.zero_grad()
 
             print(f"Epoch {epoch}, train loss is {train_loss}")
 
         ## Do we need no_grad for this?
         model.eval()
         hidden_state = None
-        for x_ids, target_y_ids in val_batches:
-            y_logits = model(x_ids, hidden_state)
+        for x_ids, target_y_ids, xs, ys in val_batches:
+            y_logits, hidden_state = model(x_ids, hidden_state)
         val_loss = calculate_loss(y_logits, target_y_ids)
         print(f"Epoch {epoch}, validation loss is {val_loss}")
 
