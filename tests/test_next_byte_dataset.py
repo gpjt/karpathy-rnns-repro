@@ -62,9 +62,9 @@ class NextByteDatasetTest(TestCase):
             b"eeadaf",
             2
         )
-        self.assertEqual(ds.tokenizer.byte_to_id[b"a"[0]], 0)
-        self.assertEqual(ds.tokenizer.byte_to_id[b"d"[0]], 1)
-        self.assertEqual(ds.tokenizer.byte_to_id[b"e"[0]], 2)
+        self.assertEqual(ds.tokenizer._byte_to_id[b"a"[0]], 0)
+        self.assertEqual(ds.tokenizer._byte_to_id[b"d"[0]], 1)
+        self.assertEqual(ds.tokenizer._byte_to_id[b"e"[0]], 2)
 
 
     def test_length_is_number_of_full_sequences(self):
