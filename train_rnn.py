@@ -5,6 +5,7 @@ import click
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.utils.data import Dataset
 
 
@@ -105,7 +106,7 @@ class KarpathyLSTM(nn.Module):
 
 
     def forward(self, x_ids, state=None):
-        one_hot = nn.F.one_hot(x_ids, num_classes=self.vocab_size).float()
+        one_hot = F.one_hot(x_ids, num_classes=self.vocab_size).float()
 
         if state is not None:
             outputs, new_state = self.lstm(one_hot, state)
@@ -119,12 +120,23 @@ class KarpathyLSTM(nn.Module):
         return logits, new_state
 
 
+def train(model, train_batches, val_batches):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+
+
+
+
+
+
+VAL_BATCH_PERCENT = 5
 
 
 @click.command()
 @click.argument("directory")
 @click.argument("seq_length", type=int)
-def main(directory, seq_length):
+@click.argument("batch_size", type=int)
+def main(directory, seq_length, batch_size):
     start = time.time()
     dataset = NextByteDataset(read_corpus_bytes(directory), seq_length)
     print(time.time() - start)
@@ -133,7 +145,22 @@ def main(directory, seq_length):
     print(dataset[0])
     print(dataset[1])
 
-    lstm = KarpathyLSTM(vocab_size=len(dataset.vocab), hidden_size=512, num_layers=3, dropout=0.5)
+    batches = batchify(dataset, batch_size)
+
+    val_batch_count = int(len(batches) * (VAL_BATCH_PERCENT / 100))
+    if val_batch_count == 0:
+        val_batch_count = 1
+    train_batch_count = len(batches) - val_batch_count
+    assert train_batch_count > 0, "Not enough data for training and validation"
+
+    train_batches = batches[0:train_batch_count]
+    val_batches = batches[train_batch_count:]
+
+    print(f"We have {len(train_batches)} training batches and {len(val_batches)} validation batches")
+
+    model = KarpathyLSTM(vocab_size=len(dataset.vocab), hidden_size=512, num_layers=3, dropout=0.5)
+
+    train(model, train_batches, val_batches)
 
 
 
