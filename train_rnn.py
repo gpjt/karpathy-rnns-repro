@@ -139,6 +139,8 @@ def train(model, train_batches, val_batches, epochs):
         print("Training...")
         model.train()
         hidden_state = None
+        total_train_loss = 0
+        total_train_tokens = 0
         for x_ids, target_y_ids, xs, ys in tqdm(train_batches):
             x_ids = x_ids.to(device)
             target_y_ids = target_y_ids.to(device)
@@ -154,18 +156,32 @@ def train(model, train_batches, val_batches, epochs):
             optimizer.step()
             optimizer.zero_grad()
 
-        print(f"Epoch {epoch}, train loss is {train_loss}")
+            num_tokens = x_ids.numel()
+            total_train_tokens += num_tokens
+            total_train_loss += train_loss.item() * num_tokens
 
-        ## Do we need no_grad for this?
-        print("Validation")
-        model.eval()
-        hidden_state = None
-        for x_ids, target_y_ids, xs, ys in tqdm(val_batches):
-            x_ids = x_ids.to(device)
-            target_y_ids = target_y_ids.to(device)
-            y_logits, hidden_state = model(x_ids, hidden_state)
-        val_loss = calculate_loss(y_logits, target_y_ids)
-        print(f"Epoch {epoch}, validation loss is {val_loss}")
+        train_per_token_loss = total_train_loss / total_train_tokens
+        print(f"Epoch {epoch}, average train loss per-token is {train_per_token_loss}")
+
+        with torch.no_grad():
+            total_val_loss = 0
+            total_val_tokens = 0
+            print("Validation")
+            model.eval()
+            hidden_state = None
+            for x_ids, target_y_ids, xs, ys in tqdm(val_batches):
+                x_ids = x_ids.to(device)
+                target_y_ids = target_y_ids.to(device)
+                y_logits, hidden_state = model(x_ids, hidden_state)
+
+                val_loss = calculate_loss(y_logits, target_y_ids)
+                num_tokens = x_ids.numel()
+                total_val_tokens += num_tokens
+                total_val_loss += val_loss.item() * num_tokens
+
+            val_per_token_loss = total_val_loss / total_val_tokens
+            print(f"Epoch {epoch}, validation loss is {val_per_token_loss}")
+
 
 
 
