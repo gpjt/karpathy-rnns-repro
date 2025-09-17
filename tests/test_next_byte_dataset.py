@@ -42,7 +42,7 @@ class NextByteDatasetTest(TestCase):
             2
         )
         self.assertEqual(
-            ds.vocab,
+            ds.tokenizer.vocab,
             list(b"ade"),
         )
 
@@ -52,9 +52,9 @@ class NextByteDatasetTest(TestCase):
             b"eeadaf",
             2
         )
-        self.assertEqual(ds.id_to_byte[0], b"a"[0])
-        self.assertEqual(ds.id_to_byte[1], b"d"[0])
-        self.assertEqual(ds.id_to_byte[2], b"e"[0])
+        self.assertEqual(ds.tokenizer.id_to_byte[0], b"a"[0])
+        self.assertEqual(ds.tokenizer.id_to_byte[1], b"d"[0])
+        self.assertEqual(ds.tokenizer.id_to_byte[2], b"e"[0])
 
 
     def test_works_out_int_byte_to_id_mapping(self):
@@ -62,9 +62,9 @@ class NextByteDatasetTest(TestCase):
             b"eeadaf",
             2
         )
-        self.assertEqual(ds.byte_to_id[b"a"[0]], 0)
-        self.assertEqual(ds.byte_to_id[b"d"[0]], 1)
-        self.assertEqual(ds.byte_to_id[b"e"[0]], 2)
+        self.assertEqual(ds.tokenizer.byte_to_id[b"a"[0]], 0)
+        self.assertEqual(ds.tokenizer.byte_to_id[b"d"[0]], 1)
+        self.assertEqual(ds.tokenizer.byte_to_id[b"e"[0]], 2)
 
 
     def test_length_is_number_of_full_sequences(self):
