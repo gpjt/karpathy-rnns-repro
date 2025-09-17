@@ -3,12 +3,12 @@ import random
 import torch
 
 
-def generate_sample_text(model, meta, length, temperature=0):
+def generate_sample_text(model, tokenizer, length, temperature=0):
     with torch.no_grad():
         model.eval()
         hidden_state = None
         primer = torch.tensor(
-            [[meta.byte_to_id[random.choice(meta.vocab)]]],
+            [[tokenizer.byte_to_id[random.choice(tokenizer.vocab)]]],
             dtype=torch.long
         )
         primer = primer.to(next(model.parameters()).device)
@@ -24,7 +24,7 @@ def generate_sample_text(model, meta, length, temperature=0):
             else:
                 probs = torch.softmax(logits_last / temperature, dim=-1)
                 next_id = torch.multinomial(probs, num_samples=1)
-            next_byte = meta.id_to_byte[next_id.item()]
+            next_byte = tokenizer.id_to_byte[next_id.item()]
             output.append(next_byte)
 
     return bytes(output)

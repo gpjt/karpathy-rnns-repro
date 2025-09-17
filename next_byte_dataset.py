@@ -19,10 +19,10 @@ class NextByteDataset(Dataset):
 
         self._data = full_data[:(self.num_sequences * self.seq_length) + 1]
 
-        self.meta = NextByteTokenizer(sorted(set(self._data)))
+        self.tokenizer = NextByteTokenizer(sorted(set(self._data)))
 
         self._data_as_ids = torch.tensor(
-            [self.meta.byte_to_id[b] for b in self._data],
+            [self.tokenizer.byte_to_id[b] for b in self._data],
             dtype=torch.long
         )
 

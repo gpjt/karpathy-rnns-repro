@@ -13,7 +13,7 @@ def calculate_loss(y_logits, target_y_ids):
     return F.cross_entropy(y_logits.flatten(0, 1), target_y_ids.flatten())
 
 
-def train(model, meta, train_batches, val_batches, epochs):
+def train(model, tokenizer, train_batches, val_batches, epochs):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
@@ -26,7 +26,7 @@ def train(model, meta, train_batches, val_batches, epochs):
     for epoch in range(epochs):
         print(f"Starting epoch {epoch}")
         print("Sample text at epoch start:")
-        print(repr(generate_sample_text(model, meta, 100, temperature=1)))
+        print(repr(generate_sample_text(model, tokenizer, 100, temperature=1)))
         print("Training...")
         model.train()
         hidden_state = None
@@ -74,7 +74,7 @@ def train(model, meta, train_batches, val_batches, epochs):
             print(f"Epoch {epoch}, validation loss is {val_per_token_loss}")
 
     print("Sample text at training end:")
-    print(repr(generate_sample_text(model, meta, 100, temperature=1)))
+    print(repr(generate_sample_text(model, tokenizer, 100, temperature=1)))
 
 
 
@@ -100,9 +100,9 @@ def main(directory, seq_length, batch_size, epochs):
     val_batches = batches[train_batch_count:]
     print(f"We have {len(train_batches)} training batches and {len(val_batches)} validation batches")
 
-    model = KarpathyLSTM(vocab_size=len(dataset.meta.vocab), hidden_size=512, num_layers=3, dropout=0.5)
+    model = KarpathyLSTM(vocab_size=len(dataset.tokenizer.vocab), hidden_size=512, num_layers=3, dropout=0.5)
 
-    train(model, dataset.meta, train_batches, val_batches, epochs)
+    train(model, dataset.tokenizer, train_batches, val_batches, epochs)
 
 
 
