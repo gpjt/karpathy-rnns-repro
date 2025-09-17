@@ -2,6 +2,7 @@ import time
 from pathlib import Path
 
 import click
+from tqdm import tqdm
 
 import torch
 import torch.nn as nn
@@ -134,9 +135,11 @@ def train(model, train_batches, val_batches, epochs):
     )
 
     for epoch in range(epochs):
+        print(f"Starting epoch {epoch}")
+        print("Training...")
         model.train()
         hidden_state = None
-        for x_ids, target_y_ids, xs, ys in train_batches:
+        for x_ids, target_y_ids, xs, ys in tqdm(train_batches):
             x_ids = x_ids.to(device)
             target_y_ids = target_y_ids.to(device)
             if hidden_state:
@@ -151,9 +154,10 @@ def train(model, train_batches, val_batches, epochs):
             optimizer.step()
             optimizer.zero_grad()
 
-            print(f"Epoch {epoch}, train loss is {train_loss}")
+        print(f"Epoch {epoch}, train loss is {train_loss}")
 
         ## Do we need no_grad for this?
+        print("Validation")
         model.eval()
         hidden_state = None
         for x_ids, target_y_ids, xs, ys in tqdm(val_batches):
