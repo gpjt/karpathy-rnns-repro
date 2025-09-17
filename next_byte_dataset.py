@@ -21,10 +21,7 @@ class NextByteDataset(Dataset):
 
         self.tokenizer = NextByteTokenizer(sorted(set(self._data)))
 
-        self._data_as_ids = torch.tensor(
-            [self.tokenizer.byte_to_id[b] for b in self._data],
-            dtype=torch.long
-        )
+        self._data_as_ids = self.tokenizer.encode(self._data)
 
 
     def __len__(self):
