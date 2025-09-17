@@ -12,7 +12,7 @@ def generate_sample_text(model, tokenizer, length, temperature=0):
 
         y_logits, hidden_state = model(primer)
         next_id = torch.argmax(y_logits, dim=-1, keepdim=True).squeeze(-1)
-        output = []
+        output_ids = []
         for ii in range(length):
             y_logits, hidden_state = model(next_id, hidden_state)
             logits_last = y_logits[:, -1, :]
@@ -21,7 +21,6 @@ def generate_sample_text(model, tokenizer, length, temperature=0):
             else:
                 probs = torch.softmax(logits_last / temperature, dim=-1)
                 next_id = torch.multinomial(probs, num_samples=1)
-            next_byte = tokenizer.id_to_byte[next_id.item()]
-            output.append(next_byte)
+            output_ids.append(next_id.item())
 
-    return bytes(output)
+    return tokenizer.decode(output_ids)

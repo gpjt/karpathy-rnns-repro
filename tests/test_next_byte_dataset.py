@@ -52,9 +52,9 @@ class NextByteDatasetTest(TestCase):
             b"eeadaf",
             2
         )
-        self.assertEqual(ds.tokenizer.id_to_byte[0], b"a"[0])
-        self.assertEqual(ds.tokenizer.id_to_byte[1], b"d"[0])
-        self.assertEqual(ds.tokenizer.id_to_byte[2], b"e"[0])
+        self.assertEqual(ds.tokenizer._id_to_byte[0], b"a"[0])
+        self.assertEqual(ds.tokenizer._id_to_byte[1], b"d"[0])
+        self.assertEqual(ds.tokenizer._id_to_byte[2], b"e"[0])
 
 
     def test_works_out_int_byte_to_id_mapping(self):
