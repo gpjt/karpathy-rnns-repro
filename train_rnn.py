@@ -129,9 +129,10 @@ def train(model, train_batches, val_batches, epochs):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
-    optimizer = torch.optim.AdamW(
+    optimizer = torch.optim.Adam(
         model.parameters(),
         lr=3e-4,
+        weight_decay=0.0
     )
 
     for epoch in range(epochs):
