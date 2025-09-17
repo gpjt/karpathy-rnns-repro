@@ -1,4 +1,4 @@
-class KarpathyRNNMeta:
+class NextByteTokenizer:
 
     def __init__(self, id_to_byte):
         self.id_to_byte = id_to_byte
