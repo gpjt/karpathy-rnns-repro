@@ -3,6 +3,8 @@ from pathlib import Path
 import torch
 from torch.utils.data import Dataset
 
+from meta import KarpathyRNNMeta
+
 
 class NextByteDataset(Dataset):
 
@@ -17,15 +19,10 @@ class NextByteDataset(Dataset):
 
         self._data = full_data[:(self.num_sequences * self.seq_length) + 1]
 
-        self.vocab = sorted(set(self._data))
-        self.id_to_byte = {ii: byte for (ii, byte) in enumerate(self.vocab)}
-        self.byte_to_id = {
-            byte: ii
-            for (ii, byte) in self.id_to_byte.items()
-        }
+        self.meta = KarpathyRNNMeta(sorted(set(self._data)))
 
         self._data_as_ids = torch.tensor(
-            [self.byte_to_id[b] for b in self._data],
+            [self.meta.byte_to_id[b] for b in self._data],
             dtype=torch.long
         )
 
