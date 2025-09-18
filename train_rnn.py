@@ -17,21 +17,21 @@ def calculate_loss(y_logits, target_y_ids):
     return F.cross_entropy(y_logits.flatten(0, 1), target_y_ids.flatten())
 
 
-def train(model, tokenizer, train_batches, val_batches, train_data, checkpoints_dir):
+def train(model, run, tokenizer, train_batches, val_batches):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
-    optimizer_class = getattr(torch.optim, train_data["optimizer"], None)
+    optimizer_class = getattr(torch.optim, run.train_data["optimizer"], None)
     if optimizer_class is None:
-        raise Exception(f"Could not find optimizer {train_data['optimizer']}")
+        raise Exception(f"Could not find optimizer {run.train_data['optimizer']}")
     optimizer = optimizer_class(
         model.parameters(),
-        lr=train_data["lr"],
-        weight_decay=train_data["weight_decay"],
+        lr=run.train_data["lr"],
+        weight_decay=run.train_data["weight_decay"],
     )
 
     best_val_loss = None
-    for epoch in tqdm(range(train_data["epochs"]), desc="Run"):
+    for epoch in tqdm(range(run.train_data["epochs"]), desc="Run"):
         print(f"Starting epoch {epoch}")
         print("Sample text at epoch start:")
         print(repr(generate_sample_text(model, tokenizer, 100, temperature=1)))
@@ -88,7 +88,7 @@ def train(model, tokenizer, train_batches, val_batches, train_data, checkpoints_
             is_best_epoch = False
 
         save_checkpoint(
-            checkpoints_dir, f"epoch-{epoch}", model,
+            run, f"epoch-{epoch}", model,
             epoch, train_per_token_loss, val_per_token_loss, is_best_epoch
         )
 
@@ -100,15 +100,12 @@ def train(model, tokenizer, train_batches, val_batches, train_data, checkpoints_
 @click.argument("directory")
 @click.argument("run_name")
 def main(directory, run_name):
-    run_data = RunData(directory, run_name)
+    run = RunData(directory, run_name)
 
-    train_data = json.loads((run_data.run_dir / "train.json").read_text())
-    model_data = json.loads((run_data.run_dir / "model.json").read_text())
+    dataset = NextByteDataset(read_corpus_bytes(run.data_dir), run.train_data["seq_length"])
+    batches = batchify(dataset, run.train_data["batch_size"])
 
-    dataset = NextByteDataset(read_corpus_bytes(run_data.data_dir), train_data["seq_length"])
-    batches = batchify(dataset, train_data["batch_size"])
-
-    val_batch_count = int(len(batches) * (train_data["val_batch_percent"] / 100))
+    val_batch_count = int(len(batches) * (run.train_data["val_batch_percent"] / 100))
     if val_batch_count == 0:
         val_batch_count = 1
     train_batch_count = len(batches) - val_batch_count
@@ -118,13 +115,9 @@ def main(directory, run_name):
     val_batches = batches[train_batch_count:]
     print(f"We have {len(train_batches)} training batches and {len(val_batches)} validation batches")
 
-    model = KarpathyLSTM(vocab_size=dataset.tokenizer.vocab_size, **model_data)
+    model = KarpathyLSTM(vocab_size=dataset.tokenizer.vocab_size, **run.model_data)
 
-    checkpoints_dir = run_data.run_dir / "checkpoints"
-    if not checkpoints_dir.is_dir():
-        checkpoints_dir.mkdir()
-
-    train(model, dataset.tokenizer, train_batches, val_batches, train_data, checkpoints_dir)
+    train(model, run, dataset.tokenizer, train_batches, val_batches)
 
 
 

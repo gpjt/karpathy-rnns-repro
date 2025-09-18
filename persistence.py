@@ -21,14 +21,20 @@ class RunData:
         if not self.data_dir.is_dir():
             raise Exception(f"No data directory {self.data_dir}")
 
+        self.checkpoints_dir = self.run_dir / "checkpoints"
+        if not self.checkpoints_dir.is_dir():
+            self.checkpoints_dir.mkdir()
+
+        self.train_data = json.loads((self.run_dir / "train.json").read_text())
+        self.model_data = json.loads((self.run_dir / "model.json").read_text())
 
 
 
 def save_checkpoint(
-    checkpoints_dir, descriptor, model,
+    run, descriptor, model,
     epoch, train_loss, val_loss, is_best_epoch
 ):
-    save_dir = checkpoints_dir / f"{datetime.utcnow():%Y%m%dZ%H%M%S}-{descriptor}"
+    save_dir = run.checkpoints_dir / f"{datetime.utcnow():%Y%m%dZ%H%M%S}-{descriptor}"
     save_dir_tmp = save_dir.with_suffix(".tmp")
     save_dir_tmp.mkdir()
     meta = {
@@ -44,10 +50,10 @@ def save_checkpoint(
 
     symlink_target = Path(".") / save_dir.name
     if is_best_epoch:
-        best_path = checkpoints_dir / "best"
+        best_path = run.checkpoints_dir / "best"
         best_path.unlink(missing_ok=True)
         best_path.symlink_to(symlink_target, target_is_directory=True)
 
-    latest_path = checkpoints_dir / "latest"
+    latest_path = run.checkpoints_dir / "latest"
     latest_path.unlink(missing_ok=True)
     latest_path.symlink_to(symlink_target, target_is_directory=True)
