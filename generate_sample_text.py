@@ -1,9 +1,21 @@
-import random
-
 import torch
 
 
+def sample(logits, temperature):
+    logits_last = logits[:, -1, :]
+    if temperature == 0.0:
+        next_id = torch.argmax(logits_last, dim=-1, keepdim=True)
+    else:
+        assert temperature > 0
+        probs = torch.softmax(logits_last / temperature, dim=-1)
+        next_id = torch.multinomial(probs, num_samples=1)
+
+    return next_id
+
+
 def generate_sample_text(model, tokenizer, length, temperature=0):
+    assert length >= 2
+
     with torch.no_grad():
         model.eval()
         hidden_state = None
@@ -11,16 +23,11 @@ def generate_sample_text(model, tokenizer, length, temperature=0):
         primer = primer.to(next(model.parameters()).device)
 
         y_logits, hidden_state = model(primer)
-        next_id = torch.argmax(y_logits, dim=-1, keepdim=True).squeeze(-1)
-        output_ids = []
-        for ii in range(length):
+        next_id = sample(y_logits, temperature)
+        output_ids = [primer.item(), next_id.item()]
+        for ii in range(length - 2):
             y_logits, hidden_state = model(next_id, hidden_state)
-            logits_last = y_logits[:, -1, :]
-            if temperature == 0:
-                next_id = torch.argmax(logits_last, dim=-1, keepdim=True)
-            else:
-                probs = torch.softmax(logits_last / temperature, dim=-1)
-                next_id = torch.multinomial(probs, num_samples=1)
+            next_id = sample(y_logits, temperature)
             output_ids.append(next_id.item())
 
     return tokenizer.decode(output_ids)
