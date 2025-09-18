@@ -3,7 +3,7 @@ from pathlib import Path
 import torch
 from torch.utils.data import Dataset
 
-from next_byte_tokenenizer import NextByteTokenizer
+from next_byte_tokenizer import NextByteTokenizer
 
 
 class NextByteDataset(Dataset):
