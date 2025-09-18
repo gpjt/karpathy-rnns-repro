@@ -13,21 +13,27 @@ from persistence import RunData, meta_file
 def get_training_data(run):
     train_losses = []
     val_losses = []
+    best_epoch = None
     for item in run.checkpoints_dir.iterdir():
-        if item.name in ("latest", "best"):
+        if item.name == "latest":
             continue
+
         meta = json.loads(meta_file(item).read_text())
+        if item.name == "best":
+            best_epoch = meta["epoch"]
+            continue
+
         train_losses.append((meta["epoch"], meta["train_loss"]))
         val_losses.append((meta["epoch"], meta["val_loss"]))
 
     train_losses.sort(key=lambda x: x[0])
     val_losses.sort(key=lambda x: x[0])
 
-    return train_losses, val_losses
+    return train_losses, val_losses, best_epoch
 
 
 def generate_training_chart(run):
-    train_points, val_points = get_training_data(run)
+    train_points, val_points, best_epoch = get_training_data(run)
 
     plt.title("TRAINING RUN LOSS")
     plt.xkcd()
@@ -39,6 +45,11 @@ def generate_training_chart(run):
     val_epochs, val_losses = zip(*val_points)
     ax.plot(train_epochs, train_losses, label="TRAINING LOSS", marker="o")
     ax.plot(val_epochs, val_losses, label="VALIDATION LOSS", marker="s")
+
+    ax.axvline(
+        best_epoch, color="red", linestyle="--", linewidth=1.5,
+        label="BEST EPOCH"
+    )
 
     ax.set_title("TRAINING RUN LOSS")
     ax.set_xlabel("EPOCH")
