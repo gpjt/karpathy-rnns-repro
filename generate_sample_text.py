@@ -2,7 +2,7 @@ import click
 
 import torch
 
-from persistence import RunData
+from persistence import RunData, load_checkpoint
 
 
 
@@ -43,8 +43,13 @@ def generate_sample_text(model, tokenizer, length, temperature=0):
 @click.command()
 @click.argument("directory")
 @click.argument("run_name")
-def main(directory, run_name):
+@click.argument("checkpoint")
+def main(directory, run_name, checkpoint):
     run = RunData(directory, run_name)
+
+    model, tokenizer = load_checkpoint(run, checkpoint)
+    text = generate_sample_text(model, tokenizer, length=100, temperature=1)
+    print(text.decode("utf-8", errors="replace"))
 
 
 

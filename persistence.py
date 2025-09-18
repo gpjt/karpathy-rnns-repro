@@ -2,8 +2,10 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from safetensors.torch import save_file
+from safetensors.torch import load_file, save_file
 
+from karpathy_lstm import KarpathyLSTM
+from next_byte_tokenizer import NextByteTokenizer
 
 
 class RunData:
@@ -29,9 +31,16 @@ class RunData:
         self.model_data = json.loads((self.run_dir / "model.json").read_text())
 
 
+def _meta_file(checkpoint_dir):
+    return checkpoint_dir / "meta.json"
+
+
+def _safetensors_file(checkpoint_dir):
+    return checkpoint_dir / "model.safetensors"
+
 
 def save_checkpoint(
-    run, descriptor, model,
+    run, descriptor, model, tokenizer,
     epoch, train_loss, val_loss, is_best_epoch
 ):
     save_dir = run.checkpoints_dir / f"{datetime.utcnow():%Y%m%dZ%H%M%S}-{descriptor}"
@@ -41,10 +50,11 @@ def save_checkpoint(
         "epoch": epoch,
         "train_loss": train_loss,
         "val_loss": val_loss,
+        "id_to_byte": tokenizer.id_to_byte,
     }
-    (save_dir_tmp / "meta.json").write_text(json.dumps(meta) + "\n")
+    _meta_file(save_dir_tmp).write_text(json.dumps(meta) + "\n")
 
-    save_file(model.state_dict(), save_dir_tmp / "model.safetensors")
+    save_file(model.state_dict(), _safetensors_file(save_dir_tmp))
 
     save_dir_tmp.rename(save_dir)
 
@@ -57,3 +67,19 @@ def save_checkpoint(
     latest_path = run.checkpoints_dir / "latest"
     latest_path.unlink(missing_ok=True)
     latest_path.symlink_to(symlink_target, target_is_directory=True)
+
+
+def load_checkpoint(run, checkpoint):
+    checkpoint_dir = run.checkpoints_dir / checkpoint
+    if not checkpoint_dir.is_dir():
+        raise Exception(f"Could not find checkpoint dir {checkpoint_dir}")
+
+    meta = json.loads(_meta_file(checkpoint_dir).read_text())
+    state = load_file(_safetensors_file(checkpoint_dir))
+
+    tokenizer = NextByteTokenizer(meta["id_to_byte"])
+    model = KarpathyLSTM(vocab_size=tokenizer.vocab_size, **run.model_data)
+    model.load_state_dict(state)
+
+    return model, tokenizer
+

@@ -88,7 +88,7 @@ def train(model, run, tokenizer, train_batches, val_batches):
             is_best_epoch = False
 
         save_checkpoint(
-            run, f"epoch-{epoch}", model,
+            run, f"epoch-{epoch}", model, tokenizer,
             epoch, train_per_token_loss, val_per_token_loss, is_best_epoch
         )
 
