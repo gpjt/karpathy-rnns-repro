@@ -1,4 +1,9 @@
+import click
+
 import torch
+
+from persistence import RunData
+
 
 
 def sample(logits, temperature):
@@ -11,6 +16,7 @@ def sample(logits, temperature):
         next_id = torch.multinomial(probs, num_samples=1)
 
     return next_id
+
 
 
 def generate_sample_text(model, tokenizer, length, temperature=0):
@@ -31,3 +37,16 @@ def generate_sample_text(model, tokenizer, length, temperature=0):
             output_ids.append(next_id.item())
 
     return tokenizer.decode(output_ids)
+
+
+
+@click.command()
+@click.argument("directory")
+@click.argument("run_name")
+def main(directory, run_name):
+    run = RunData(directory, run_name)
+
+
+
+if __name__ == "__main__":
+    main()
