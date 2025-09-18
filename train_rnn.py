@@ -16,7 +16,7 @@ from next_byte_dataset import NextByteDataset, batchify, read_corpus_bytes
 
 
 def save_checkpoint(checkpoints_dir, descriptor, model, epoch, train_loss, val_loss):
-    save_dir = checkpoints_dir / f"{datetime.now()}-{descriptor}"
+    save_dir = checkpoints_dir / f"{datetime.utcnow():%Y%m%dZ%H%M%S}-{descriptor}"
     save_dir.mkdir()
     meta = {
         "epoch": epoch,
