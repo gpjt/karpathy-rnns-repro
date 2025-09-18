@@ -18,7 +18,6 @@ def sample(logits, temperature):
     return next_id
 
 
-
 def generate_sample_text(model, tokenizer, length, temperature=0):
     assert length >= 2
 
@@ -39,21 +38,32 @@ def generate_sample_text(model, tokenizer, length, temperature=0):
     return tokenizer.decode(output_ids)
 
 
-
 @click.command()
 @click.argument("directory")
 @click.argument("run_name")
 @click.argument("checkpoint")
-def main(directory, run_name, checkpoint):
+@click.option(
+    "--length", "-n", type=int,
+    default=100, show_default=True,
+    help="Bytes to generate"
+)
+@click.option(
+    "--temperature", "-t", type=click.FloatRange(min=0.0),
+    default=0.0, show_default=True,
+    help="Sampling temperature (0 = greedy)"
+)
+def main(directory, run_name, checkpoint, length, temperature):
     run = RunData(directory, run_name)
 
     model, tokenizer = load_checkpoint(run, checkpoint)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
-    text = generate_sample_text(model, tokenizer, length=100, temperature=1)
+    text = generate_sample_text(
+        model, tokenizer,
+        length=length, temperature=temperature
+    )
     print(text.decode("utf-8", errors="replace"))
-
 
 
 if __name__ == "__main__":
