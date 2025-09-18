@@ -1,4 +1,3 @@
-import random
 import tempfile
 from pathlib import Path
 from unittest import TestCase
@@ -7,7 +6,7 @@ import torch
 from torch.testing import assert_close
 from torch.utils.data import Dataset
 
-from train_rnn import KarpathyLSTM, NextByteDataset, batchify, read_corpus_bytes
+from next_byte_dataset import NextByteDataset, batchify, read_corpus_bytes
 
 
 class NextByteDatasetTest(TestCase):
