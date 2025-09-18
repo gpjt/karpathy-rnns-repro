@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from pathlib import Path
 
 import click
@@ -12,11 +13,19 @@ from karpathy_lstm import KarpathyLSTM
 from next_byte_dataset import NextByteDataset, batchify, read_corpus_bytes
 
 
+def save_checkpoint(descriptor, model, checkpoints_dir):
+    save_dir = checkpoints_dir / f"{datetime.now()}-{descriptor}"
+    save_dir.mkdir()
+    meta = {
+    }
+    (save_dir / "meta.json").write_text(json.dumps(meta))
+
+
 def calculate_loss(y_logits, target_y_ids):
     return F.cross_entropy(y_logits.flatten(0, 1), target_y_ids.flatten())
 
 
-def train(model, tokenizer, train_batches, val_batches, train_data):
+def train(model, tokenizer, train_batches, val_batches, train_data, checkpoints_dir):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
@@ -79,6 +88,8 @@ def train(model, tokenizer, train_batches, val_batches, train_data):
             val_per_token_loss = total_val_loss / total_val_tokens
             print(f"Epoch {epoch}, validation loss is {val_per_token_loss}")
 
+        save_checkpoint(f"epoch-{epoch}", model, checkpoints_dir)
+
     print("Sample text at training end:")
     print(repr(generate_sample_text(model, tokenizer, 100, temperature=1)))
 
@@ -118,7 +129,11 @@ def main(directory, run_name):
 
     model = KarpathyLSTM(vocab_size=dataset.tokenizer.vocab_size, **model_data)
 
-    train(model, dataset.tokenizer, train_batches, val_batches, train_data)
+    checkpoints_dir = run_dir / "checkpoints"
+    if not checkpoints_dir.is_dir():
+        checkpoints_dir.mkdir()
+
+    train(model, dataset.tokenizer, train_batches, val_batches, train_data, checkpoints_dir)
 
 
 
