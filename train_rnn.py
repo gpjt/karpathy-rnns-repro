@@ -38,7 +38,7 @@ def train(model, tokenizer, train_batches, val_batches, train_data):
         hidden_state = None
         total_train_loss = 0
         total_train_tokens = 0
-        for x_ids, target_y_ids, xs, ys in tqdm(train_batches):
+        for x_ids, target_y_ids, xs, ys in tqdm(train_batches, desc=f"Epoch {epoch} train"):
             x_ids = x_ids.to(device)
             target_y_ids = target_y_ids.to(device)
             if hidden_state is not None:
@@ -66,7 +66,7 @@ def train(model, tokenizer, train_batches, val_batches, train_data):
             print("Validation")
             model.eval()
             hidden_state = None
-            for x_ids, target_y_ids, xs, ys in tqdm(val_batches):
+            for x_ids, target_y_ids, xs, ys in tqdm(val_batches, desc=f"Epoch {epoch} validation"):
                 x_ids = x_ids.to(device)
                 target_y_ids = target_y_ids.to(device)
                 y_logits, hidden_state = model(x_ids, hidden_state)
