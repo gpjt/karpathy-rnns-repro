@@ -1,5 +1,5 @@
+import datetime
 import json
-from datetime import datetime
 from pathlib import Path
 
 from safetensors.torch import load_file, save_file
@@ -43,7 +43,8 @@ def save_checkpoint(
     run, descriptor, model, tokenizer,
     epoch, train_loss, val_loss, is_best_epoch
 ):
-    save_dir = run.checkpoints_dir / f"{datetime.utcnow():%Y%m%dZ%H%M%S}-{descriptor}"
+    now = datetime.datetime.now(datetime.UTC)
+    save_dir = run.checkpoints_dir / f"{now:%Y%m%dZ%H%M%S}-{descriptor}"
     save_dir_tmp = save_dir.with_suffix(".tmp")
     save_dir_tmp.mkdir()
     meta = {
