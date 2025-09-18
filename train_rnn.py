@@ -5,6 +5,8 @@ from pathlib import Path
 import click
 from tqdm import tqdm
 
+from safetensors.torch import save_file
+
 import torch
 import torch.nn.functional as F
 
@@ -22,6 +24,9 @@ def save_checkpoint(checkpoints_dir, descriptor, model, epoch, train_loss, val_l
         "val_loss": val_loss,
     }
     (save_dir / "meta.json").write_text(json.dumps(meta) + "\n")
+
+    save_file(model.state_dict(), save_dir / "model.safetensors")
+
 
 
 def calculate_loss(y_logits, target_y_ids):
