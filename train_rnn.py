@@ -94,7 +94,7 @@ def train(model, run, tokenizer, train_batches, val_batches):
         generate_training_chart(run)
 
     print("Sample text at training end:")
-    print(repr(generate_sample_text(model, tokenizer, 100, temperature=1)))
+    print(repr(generate_sample_text(model, tokenizer, 100, temperature=0.5)))
 
 
 @click.command()
