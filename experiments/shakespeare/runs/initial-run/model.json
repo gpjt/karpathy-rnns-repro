@@ -1,0 +1,5 @@
+{
+  "hidden_size": 512,
+  "num_layers": 3,
+  "dropout": 0.5
+}

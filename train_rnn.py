@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 import click
 from tqdm import tqdm
 
@@ -13,17 +16,20 @@ def calculate_loss(y_logits, target_y_ids):
     return F.cross_entropy(y_logits.flatten(0, 1), target_y_ids.flatten())
 
 
-def train(model, tokenizer, train_batches, val_batches, epochs):
+def train(model, tokenizer, train_batches, val_batches, train_data):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
-    optimizer = torch.optim.Adam(
+    optimizer_class = getattr(torch.optim, train_data["optimizer"], None)
+    if optimizer_class is None:
+        raise Exception(f"Could not find optimizer {train_data['optimizer']}")
+    optimizer = optimizer_class(
         model.parameters(),
-        lr=3e-4,
-        weight_decay=0.0
+        lr=train_data["lr"],
+        weight_decay=train_data["weight_decay"],
     )
 
-    for epoch in range(epochs):
+    for epoch in range(train_data["epochs"]):
         print(f"Starting epoch {epoch}")
         print("Sample text at epoch start:")
         print(repr(generate_sample_text(model, tokenizer, 100, temperature=1)))
@@ -78,19 +84,29 @@ def train(model, tokenizer, train_batches, val_batches, epochs):
 
 
 
-VAL_BATCH_PERCENT = 5
-
-
 @click.command()
 @click.argument("directory")
-@click.argument("seq_length", type=int)
-@click.argument("batch_size", type=int)
-@click.argument("epochs", type=int)
-def main(directory, seq_length, batch_size, epochs):
-    dataset = NextByteDataset(read_corpus_bytes(directory), seq_length)
-    batches = batchify(dataset, batch_size)
+@click.argument("run_name")
+def main(directory, run_name):
+    root_dir = Path(directory)
+    if not root_dir.is_dir():
+        raise Exception(f"Could not find directory {root_dir}")
 
-    val_batch_count = int(len(batches) * (VAL_BATCH_PERCENT / 100))
+    run_dir = root_dir / "runs" / run_name
+    if not run_dir.is_dir():
+        raise Exception(f"No runs directory {run_dir}")
+
+    train_data = json.loads((run_dir / "train.json").read_text())
+    model_data = json.loads((run_dir / "model.json").read_text())
+
+    data_dir = root_dir / "data"
+    if not data_dir.is_dir():
+        raise Exception(f"No data directory {data_dir}")
+
+    dataset = NextByteDataset(read_corpus_bytes(data_dir), train_data["seq_length"])
+    batches = batchify(dataset, train_data["batch_size"])
+
+    val_batch_count = int(len(batches) * (train_data["val_batch_percent"] / 100))
     if val_batch_count == 0:
         val_batch_count = 1
     train_batch_count = len(batches) - val_batch_count
@@ -100,9 +116,9 @@ def main(directory, seq_length, batch_size, epochs):
     val_batches = batches[train_batch_count:]
     print(f"We have {len(train_batches)} training batches and {len(val_batches)} validation batches")
 
-    model = KarpathyLSTM(vocab_size=dataset.tokenizer.vocab_size, hidden_size=512, num_layers=3, dropout=0.5)
+    model = KarpathyLSTM(vocab_size=dataset.tokenizer.vocab_size, **model_data)
 
-    train(model, dataset.tokenizer, train_batches, val_batches, epochs)
+    train(model, dataset.tokenizer, train_batches, val_batches, train_data)
 
 
 

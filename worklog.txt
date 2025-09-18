@@ -589,8 +589,45 @@ Right, we need to be able to checkpoint this.
 First step, let's refactor things a bit to tidy up.
 
 
+2025-09-18
 
+Did a lot of refactoring.  Going to do checkpointing today, but I think I should store the model and training params alongside.
 
+Right now I run the script like this:
+
+uv run train_rnn.py examples/shakespeare/ seq_len batch_size epochs
+
+In the code I also have some hard-coded params:
+
+VAL_BATCH_PERCENT = 5
+
+KarpathyLSTM(vocab_size=dataset.tokenizer.vocab_size, hidden_size=512, num_layers=3, dropout=0.5)
+
+I'm thinking I should rename the examples dir to "experiments".  Then, inside the "shakespeare" one, I would have
+a "data" dir, which would include the input.txt file.
+
+I would also have directory providisionally called "runs".  In that, I would have subdirectories for each run.
+
+In the (say) "initial-run" directory, I would have:
+
+A directory called "checkpoints", which we'd use for the obvious timestamped files of tensors
+
+A file called "model.json", which would have just the stuff that could be **'ed into the model constructor.
+
+A file called "train.json", which would have the val percent, the seq length and the batch size.
+
+Then we can run training like this:
+
+uv run train_rnn.py experiments/shakespeare initial-run
+
+...to run the train, generating checkpoints, then
+
+uv run generate_sample_text.py experiments/shakespeare initial-run checkpoint-id --len=1024
+
+the checkpoint-id could potentially be optional -- if we store symlinks to latest and best validation
+then it could pick up probably the latest one.
+
+Let's run that past ChatGPT and see what it thinks
 
 
 
