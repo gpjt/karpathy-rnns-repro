@@ -15,7 +15,7 @@ from karpathy_lstm import KarpathyLSTM
 from next_byte_dataset import NextByteDataset, batchify, read_corpus_bytes
 
 
-def save_checkpoint(checkpoints_dir, descriptor, model, epoch, train_loss, val_loss):
+def save_checkpoint(checkpoints_dir, descriptor, model, epoch, train_loss, val_loss, is_best_epoch):
     save_dir = checkpoints_dir / f"{datetime.utcnow():%Y%m%dZ%H%M%S}-{descriptor}"
     save_dir_tmp = save_dir.with_suffix(".tmp")
     save_dir_tmp.mkdir()
@@ -29,6 +29,16 @@ def save_checkpoint(checkpoints_dir, descriptor, model, epoch, train_loss, val_l
     save_file(model.state_dict(), save_dir_tmp / "model.safetensors")
 
     save_dir_tmp.rename(save_dir)
+
+    symlink_target = Path(".") / save_dir.name
+    if is_best_epoch:
+        best_path = checkpoints_dir / "best"
+        best_path.unlink(missing_ok=True)
+        best_path.symlink_to(symlink_target, target_is_directory=True)
+
+    latest_path = checkpoints_dir / "latest"
+    latest_path.unlink(missing_ok=True)
+    latest_path.symlink_to(symlink_target, target_is_directory=True)
 
 
 
@@ -49,6 +59,7 @@ def train(model, tokenizer, train_batches, val_batches, train_data, checkpoints_
         weight_decay=train_data["weight_decay"],
     )
 
+    best_val_loss = None
     for epoch in tqdm(range(train_data["epochs"]), desc="Run"):
         print(f"Starting epoch {epoch}")
         print("Sample text at epoch start:")
@@ -97,7 +108,18 @@ def train(model, tokenizer, train_batches, val_batches, train_data, checkpoints_
             val_per_token_loss = total_val_loss / total_val_tokens
             print(f"Epoch {epoch}, validation loss is {val_per_token_loss}")
 
-        save_checkpoint(checkpoints_dir, f"epoch-{epoch}", model, epoch, train_per_token_loss, val_per_token_loss)
+        is_best_epoch = True
+        if best_val_loss is None:
+            best_val_loss = val_per_token_loss
+        elif val_per_token_loss < best_val_loss:
+            best_val_loss = val_per_token_loss
+        else:
+            is_best_epoch = False
+
+        save_checkpoint(
+            checkpoints_dir, f"epoch-{epoch}", model,
+            epoch, train_per_token_loss, val_per_token_loss, is_best_epoch
+        )
 
     print("Sample text at training end:")
     print(repr(generate_sample_text(model, tokenizer, 100, temperature=1)))
