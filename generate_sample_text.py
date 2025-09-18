@@ -48,6 +48,9 @@ def main(directory, run_name, checkpoint):
     run = RunData(directory, run_name)
 
     model, tokenizer = load_checkpoint(run, checkpoint)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+
     text = generate_sample_text(model, tokenizer, length=100, temperature=1)
     print(text.decode("utf-8", errors="replace"))
 
