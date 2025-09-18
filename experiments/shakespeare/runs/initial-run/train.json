@@ -1,6 +1,6 @@
 {
   "seq_length": 100,
-  "batch_size": 10,
+  "batch_size": 100,
   "val_batch_percent": 5,
   "optimizer": "Adam",
   "lr": 0.0003,
