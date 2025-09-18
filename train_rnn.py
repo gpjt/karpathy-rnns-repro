@@ -17,15 +17,18 @@ from next_byte_dataset import NextByteDataset, batchify, read_corpus_bytes
 
 def save_checkpoint(checkpoints_dir, descriptor, model, epoch, train_loss, val_loss):
     save_dir = checkpoints_dir / f"{datetime.utcnow():%Y%m%dZ%H%M%S}-{descriptor}"
-    save_dir.mkdir()
+    save_dir_tmp = save_dir.with_suffix(".tmp")
+    save_dir_tmp.mkdir()
     meta = {
         "epoch": epoch,
         "train_loss": train_loss,
         "val_loss": val_loss,
     }
-    (save_dir / "meta.json").write_text(json.dumps(meta) + "\n")
+    (save_dir_tmp / "meta.json").write_text(json.dumps(meta) + "\n")
 
-    save_file(model.state_dict(), save_dir / "model.safetensors")
+    save_file(model.state_dict(), save_dir_tmp / "model.safetensors")
+
+    save_dir_tmp.rename(save_dir)
 
 
 
