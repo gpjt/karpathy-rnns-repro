@@ -31,11 +31,11 @@ class RunData:
         self.model_data = json.loads((self.run_dir / "model.json").read_text())
 
 
-def _meta_file(checkpoint_dir):
+def meta_file(checkpoint_dir):
     return checkpoint_dir / "meta.json"
 
 
-def _safetensors_file(checkpoint_dir):
+def safetensors_file(checkpoint_dir):
     return checkpoint_dir / "model.safetensors"
 
 
@@ -53,9 +53,9 @@ def save_checkpoint(
         "val_loss": val_loss,
         "id_to_byte": tokenizer.id_to_byte,
     }
-    _meta_file(save_dir_tmp).write_text(json.dumps(meta) + "\n")
+    meta_file(save_dir_tmp).write_text(json.dumps(meta) + "\n")
 
-    save_file(model.state_dict(), _safetensors_file(save_dir_tmp))
+    save_file(model.state_dict(), safetensors_file(save_dir_tmp))
 
     save_dir_tmp.rename(save_dir)
 
@@ -75,8 +75,8 @@ def load_checkpoint(run, checkpoint):
     if not checkpoint_dir.is_dir():
         raise Exception(f"Could not find checkpoint dir {checkpoint_dir}")
 
-    meta = json.loads(_meta_file(checkpoint_dir).read_text())
-    state = load_file(_safetensors_file(checkpoint_dir))
+    meta = json.loads(meta_file(checkpoint_dir).read_text())
+    state = load_file(safetensors_file(checkpoint_dir))
 
     tokenizer = NextByteTokenizer(meta["id_to_byte"])
     model = KarpathyLSTM(vocab_size=tokenizer.vocab_size, **run.model_data)

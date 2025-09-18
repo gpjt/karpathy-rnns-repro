@@ -1,5 +1,7 @@
 input.txt
 checkpoints/
+experiments/*/runs/*/training_run.html
+experiments/*/runs/*/training_run.png
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
