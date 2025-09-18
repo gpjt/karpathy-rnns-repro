@@ -5,6 +5,7 @@ import torch
 import torch.nn.functional as F
 
 from generate_sample_text import generate_sample_text
+from generate_training_chart import generate_training_chart
 from karpathy_lstm import KarpathyLSTM
 from next_byte_dataset import NextByteDataset, batchify, read_corpus_bytes
 from persistence import RunData, save_checkpoint
@@ -88,6 +89,7 @@ def train(model, run, tokenizer, train_batches, val_batches):
             run, f"epoch-{epoch}", model, tokenizer,
             epoch, train_per_token_loss, val_per_token_loss, is_best_epoch
         )
+        generate_training_chart(run)
 
     print("Sample text at training end:")
     print(repr(generate_sample_text(model, tokenizer, 100, temperature=1)))
