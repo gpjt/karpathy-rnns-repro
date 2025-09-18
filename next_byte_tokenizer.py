@@ -33,4 +33,4 @@ class NextByteTokenizer:
 
 
     def random_vocab_byte(self):
-        return random.choice(list(self._id_to_byte))
+        return random.choice(self._id_to_byte)
