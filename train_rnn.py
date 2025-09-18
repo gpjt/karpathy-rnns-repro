@@ -49,11 +49,10 @@ def train(model, tokenizer, train_batches, val_batches, train_data, checkpoints_
         weight_decay=train_data["weight_decay"],
     )
 
-    for epoch in range(train_data["epochs"]):
+    for epoch in tqdm(range(train_data["epochs"]), desc="Run"):
         print(f"Starting epoch {epoch}")
         print("Sample text at epoch start:")
         print(repr(generate_sample_text(model, tokenizer, 100, temperature=1)))
-        print("Training...")
         model.train()
         hidden_state = None
         total_train_loss = 0
@@ -83,7 +82,6 @@ def train(model, tokenizer, train_batches, val_batches, train_data, checkpoints_
         with torch.no_grad():
             total_val_loss = 0
             total_val_tokens = 0
-            print("Validation")
             model.eval()
             hidden_state = None
             for x_ids, target_y_ids, xs, ys in tqdm(val_batches, desc=f"Epoch {epoch} validation"):
