@@ -43,7 +43,7 @@ def generate_training_chart(run):
     ax.set_title("TRAINING RUN LOSS")
     ax.set_xlabel("EPOCH")
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-    ax.set_ylabel("lOSS")
+    ax.set_ylabel("LOSS")
     ax.legend()
 
     fig.tight_layout()
