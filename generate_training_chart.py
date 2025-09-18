@@ -5,6 +5,7 @@ from pathlib import Path
 import click
 
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 
 from persistence import RunData, meta_file
 
@@ -41,9 +42,9 @@ def generate_training_chart(run):
 
     ax.set_title("TRAINING RUN LOSS")
     ax.set_xlabel("EPOCH")
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     ax.set_ylabel("lOSS")
     ax.legend()
-    # ax.grid(True, linestyle="--", alpha=0.5)
 
     fig.tight_layout()
     image_file = run.run_dir / "training_run.png"
