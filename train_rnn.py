@@ -48,6 +48,8 @@ def train(model, run, tokenizer, train_batches, val_batches):
                 y_logits, hidden_state = model(x_ids)
             train_loss = calculate_loss(y_logits, target_y_ids)
             train_loss.backward()
+            if run.train_data["max_grad_norm"] > 0:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), run.train_data["max_grad_norm"])
 
             optimizer.step()
             optimizer.zero_grad()
