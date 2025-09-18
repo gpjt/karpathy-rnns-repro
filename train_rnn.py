@@ -13,12 +13,14 @@ from karpathy_lstm import KarpathyLSTM
 from next_byte_dataset import NextByteDataset, batchify, read_corpus_bytes
 
 
-def save_checkpoint(descriptor, model, checkpoints_dir):
+def save_checkpoint(checkpoints_dir, descriptor, model, train_loss, val_loss):
     save_dir = checkpoints_dir / f"{datetime.now()}-{descriptor}"
     save_dir.mkdir()
     meta = {
+        "train_loss": train_loss,
+        "val_loss": val_loss,
     }
-    (save_dir / "meta.json").write_text(json.dumps(meta))
+    (save_dir / "meta.json").write_text(json.dumps(meta) + "\n")
 
 
 def calculate_loss(y_logits, target_y_ids):
@@ -88,7 +90,7 @@ def train(model, tokenizer, train_batches, val_batches, train_data, checkpoints_
             val_per_token_loss = total_val_loss / total_val_tokens
             print(f"Epoch {epoch}, validation loss is {val_per_token_loss}")
 
-        save_checkpoint(f"epoch-{epoch}", model, checkpoints_dir)
+        save_checkpoint(checkpoints_dir, f"epoch-{epoch}", model, train_per_token_loss, val_per_token_loss)
 
     print("Sample text at training end:")
     print(repr(generate_sample_text(model, tokenizer, 100, temperature=1)))
