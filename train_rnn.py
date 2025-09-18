@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from generate_sample_text import generate_sample_text
 from karpathy_lstm import KarpathyLSTM
 from next_byte_dataset import NextByteDataset, batchify, read_corpus_bytes
-from persistence import save_checkpoint
+from persistence import RunData, save_checkpoint
 
 
 def calculate_loss(y_logits, target_y_ids):
@@ -96,27 +96,16 @@ def train(model, tokenizer, train_batches, val_batches, train_data, checkpoints_
     print(repr(generate_sample_text(model, tokenizer, 100, temperature=1)))
 
 
-
 @click.command()
 @click.argument("directory")
 @click.argument("run_name")
 def main(directory, run_name):
-    root_dir = Path(directory)
-    if not root_dir.is_dir():
-        raise Exception(f"Could not find directory {root_dir}")
+    run_data = RunData(directory, run_name)
 
-    run_dir = root_dir / "runs" / run_name
-    if not run_dir.is_dir():
-        raise Exception(f"No runs directory {run_dir}")
+    train_data = json.loads((run_data.run_dir / "train.json").read_text())
+    model_data = json.loads((run_data.run_dir / "model.json").read_text())
 
-    train_data = json.loads((run_dir / "train.json").read_text())
-    model_data = json.loads((run_dir / "model.json").read_text())
-
-    data_dir = root_dir / "data"
-    if not data_dir.is_dir():
-        raise Exception(f"No data directory {data_dir}")
-
-    dataset = NextByteDataset(read_corpus_bytes(data_dir), train_data["seq_length"])
+    dataset = NextByteDataset(read_corpus_bytes(run_data.data_dir), train_data["seq_length"])
     batches = batchify(dataset, train_data["batch_size"])
 
     val_batch_count = int(len(batches) * (train_data["val_batch_percent"] / 100))
@@ -131,7 +120,7 @@ def main(directory, run_name):
 
     model = KarpathyLSTM(vocab_size=dataset.tokenizer.vocab_size, **model_data)
 
-    checkpoints_dir = run_dir / "checkpoints"
+    checkpoints_dir = run_data.run_dir / "checkpoints"
     if not checkpoints_dir.is_dir():
         checkpoints_dir.mkdir()
 

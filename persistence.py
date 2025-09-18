@@ -5,6 +5,25 @@ from pathlib import Path
 from safetensors.torch import save_file
 
 
+
+class RunData:
+
+    def __init__(self, directory, run_name):
+        self.root_dir = Path(directory)
+        if not self.root_dir.is_dir():
+            raise Exception(f"Could not find directory {self.root_dir}")
+
+        self.run_dir = self.root_dir / "runs" / run_name
+        if not self.run_dir.is_dir():
+            raise Exception(f"No runs directory {self.run_dir}")
+
+        self.data_dir = self.root_dir / "data"
+        if not self.data_dir.is_dir():
+            raise Exception(f"No data directory {self.data_dir}")
+
+
+
+
 def save_checkpoint(
     checkpoints_dir, descriptor, model,
     epoch, train_loss, val_loss, is_best_epoch
