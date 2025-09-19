@@ -7,5 +7,5 @@
   "weight_decay": 0.0,
   "epochs": 10000,
   "max_grad_norm": 5.0,
-  "patience" 5
+  "patience": 5
 }
