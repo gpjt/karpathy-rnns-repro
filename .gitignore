@@ -1,4 +1,7 @@
-input.txt
+experiments/paul-graham/data/input.txt
+experiments/shakespeare/data/input.txt
+experiments/war-and-peace/data/input.txt
+
 checkpoints/
 experiments/*/runs/*/training_run.html
 experiments/*/runs/*/training_run.png
