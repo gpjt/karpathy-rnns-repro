@@ -1,3 +1,5 @@
+import math
+
 import click
 from tqdm import tqdm
 
@@ -28,7 +30,14 @@ def train(model, run, tokenizer, train_batches, val_batches):
         weight_decay=run.train_data["weight_decay"],
     )
 
+    if "patience" in run.train_data:
+        patience = run.train_data["patience"]
+        assert patience > 0
+    else:
+        patience = math.inf
+
     best_val_loss = None
+    best_epoch = None
     for epoch in tqdm(range(run.train_data["epochs"]), desc="Run"):
         print(f"Starting epoch {epoch}")
         print("Sample text at epoch start:")
@@ -82,8 +91,10 @@ def train(model, run, tokenizer, train_batches, val_batches):
         is_best_epoch = True
         if best_val_loss is None:
             best_val_loss = val_per_token_loss
+            best_epoch = epoch
         elif val_per_token_loss < best_val_loss:
             best_val_loss = val_per_token_loss
+            best_epoch = epoch
         else:
             is_best_epoch = False
 
@@ -92,6 +103,11 @@ def train(model, run, tokenizer, train_batches, val_batches):
             epoch, train_per_token_loss, val_per_token_loss, is_best_epoch
         )
         generate_training_chart(run)
+
+        if epoch - best_epoch >= patience:
+            print("validation loss not going down, stopping early")
+            break
+
 
     print("Sample text at training end:")
     print(repr(generate_sample_text(model, tokenizer, 100, temperature=0.5)))
