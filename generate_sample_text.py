@@ -19,7 +19,7 @@ def sample(logits, temperature):
 
 
 def generate_sample_text(model, tokenizer, length, primer_text=None, temperature=0):
-    assert length >= 2
+    assert length >= 1
 
     with torch.no_grad():
         model.eval()
@@ -30,12 +30,11 @@ def generate_sample_text(model, tokenizer, length, primer_text=None, temperature
             primer_bytes = primer_text.encode("utf-8")
         primer = tokenizer.encode(primer_bytes).unsqueeze(0)
         primer = primer.to(next(model.parameters()).device)
-        primer_len = primer.shape[-1]
 
         y_logits, hidden_state = model(primer)
         next_id = sample(y_logits, temperature)
-        output_ids = primer.flatten().tolist() + [next_id.item()]
-        for ii in range(length - 1 - primer_len):
+        output_ids = [next_id.item()]
+        for ii in range(length - 1):
             y_logits, hidden_state = model(next_id, hidden_state)
             next_id = sample(y_logits, temperature)
             output_ids.append(next_id.item())
@@ -74,7 +73,7 @@ def main(directory, run_name, checkpoint, length, temperature, primer_text):
         length=length, primer_text=primer_text,
         temperature=temperature,
     )
-    print(text.decode("utf-8", errors="replace"))
+    print((primer_text or "") + text.decode("utf-8", errors="replace"))
 
 
 if __name__ == "__main__":
