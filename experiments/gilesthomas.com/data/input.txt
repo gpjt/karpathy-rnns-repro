@@ -32740,9 +32740,13 @@ represent that in a single number -- let's say, 0 means that it has only one can
 and 1 means that it hasn't even the slightest idea what is most likely -- then it
 would be an interesting measure of how certain the LLM was about its choice.
 
-Turns out (unsurprisingly) that I'd re-invented something that's been around for a long time.  That number is called
+Turns out (unsurprisingly) that I'd re-invented something that's been around for a long time.  ~~That number is called
 perplexity, and I imagine that's why the largest AI-enabled web search engine borrowed
-that name.
+that name.~~
+
+UPDATE: turns out that I was wrong there: the measure I was thinking of was
+something more like [the Shannon entropy](/2025/10/llm-from-scratch-20-starting-training-cross-entropy-loss) of the probability distribution you
+get by running the logits through softmax.  [Perplexity is something related, but different](/2025/10/llm-from-scratch-21-perplexed-by-perplexity).
 
 
 
@@ -34587,6 +34591,7 @@ Next, it's time to move on to the
 next chapter, training.  Hopefully all the time I spent [fine-tuning LLMs](/fine-tuning)
 last year will turn out to be useful there!
 
+If you want to jump straight forward to that, here's the [first post on training](/2025/10/llm-from-scratch-20-starting-training-cross-entropy-loss).
 
 <|article-end|>
 
@@ -36029,7 +36034,7 @@ Comments, as always, would be very welcome.
 Coming up next: having summarised what I've learnt so far in the book, it's time to start
 working on training the LLM.  I'll be reporting back soon...
 
-
+[Here's a link to the next post in this series](/2025/10/llm-from-scratch-20-starting-training-cross-entropy-loss).
 
 
 
@@ -36110,7 +36115,7 @@ working on training the LLM.  I'll be reporting back soon...
 ---
 slug: llm-from-scratch-20-starting-training-cross-entropy-loss
 title: Writing an LLM from scratch, part 20 -- starting training, and cross entropy loss
-date: 2025-10-01 23:23:00+00:00
+date: 2025-10-02 22:10:00+00:00
 state: published
 categories: ai, llm-from-scratch, til-deep-dives
 description: Starting training our LLM requires a loss function, which is called cross entropy loss.  What is this and why does it work?
@@ -36119,57 +36124,48 @@ description: Starting training our LLM requires a loss function, which is called
 Chapter 5 of [Sebastian Raschka](https://sebastianraschka.com/)'s book
 "[Build a Large Language Model (from Scratch)](https://www.manning.com/books/build-a-large-language-model-from-scratch)"
 explains how to train the LLM.  There are a number of things in there that required
-a bit of thought, so I'll post about each of those in turn.
+a bit of thought, so I'll post about each of them in turn.
 
 
 The chapter starts off easily, with a few bits of code to generate some sample
 text.  Because we have a call to `torch.manual_seed` at the start to make the random
 number generator deterministic, you can run the code and get exactly the same results
-as appear in the book, which is a good sanity check.
+as appear in the book, which is an excellent sanity check.
 
 Once that's covered, we get into the core of the first section: how do we write our loss function?
 
 <!--more-->
 
-In order to train any kind of ML system like this using gradient descent, we need
+In order to train an ML system like this using gradient descent, we need
 a function that will tell us how inaccurate its current results are.  The training
-process runs some inputs through, works out the value of this error, and then uses
+process runs some inputs through, works out the value of this error, or loss, and then uses
 that to work out gradients for all of our parameters.  We then use those to adjust the
 parameters a little bit in the right direction, and then try again with some new
 training inputs.  Rinse and repeat, checking constantly that things are going in the
-right direction, and we're done. [^1]
+right direction -- and we're done. [^1]
 
 The standard way to express this in most areas of AI -- including deep learning -- is
-to have an error, or loss function that is zero when the model has given exactly the expected
+to have an error/loss function that is zero when the model has given exactly the expected
 result for our training data, and a value higher than zero if it's wrong, with the size
-of the value being an indication of how far off the model's output was. [^2]  We want
+of the value being an indication of how far off the model's output was.  We want
 to descend the gradient of that loss function until we hit a minimum.
 
 So, how do we define a function that says how wrong our LLM's outputs are?  Let's start
-by looking at what those outputs are.  Our LLM receives a sequence of token IDs that represent the
+by looking at *what* they are.  Our LLM receives a sequence of token IDs that represent the
 text that we want to process, and outputs a sequence of vectors of logits, one for each token in the input sequence.
 The logits for each token are the prediction for what comes next, based *only* on
-the tokens from the start up to and including that specific token.
+the tokens from the start, up to and including that specific token.
 
-So, for "the fat cat sat on the", we're getting six outputs -- the logits
-for the next token for each of these:
+Now let's look at our training data.  Way back at [the start of this series](/2024/12/llm-from-scratch-3),
+I commented that it seemed odd that the training targets for an LLM were the original sequence "shifted left, with
+a new token on the end" -- that is, we might have this input/expected output pair:
 
-* "The"
-* "The fat"
-* "The fat cat"
-* "The fat cat sat"
-* "The fat cat sat on"
-* "The fat cat sat on the"
-
----
-REWORK THIS
-
-NOTE TO SELF I think the way we need to express this is somehow to break the above and
-the shifted-left target sequence so that people can easily understand that
-
+```
 "The fat cat sat on the" -> " fat cat sat on the mat"
+```
 
-...is kind of a shorthand for
+We now know that the LLM is predicting logits for all of the "prefix" sequences in the original
+sequence, so we can see that pair as kind of a shorthand for:
 
 * "The" -> " fat"
 * "The fat" -> " cat"
@@ -36178,44 +36174,22 @@ the shifted-left target sequence so that people can easily understand that
 * "The fat cat sat on" -> " the"
 * "The fat cat sat on the" -> " mat"
 
-earlier text below, expected rewrite area ends with ---
-
-Now, we know that the token that we want to predict for the first sequence above is " fat".
-The one we want to predict for the second is " cat".  And so on.
-
-So, we can view our *targets* for each of those sequences as being:
-
-* cat
-* sat
-* on
-* the
-* mat
-
-Let's reiterate that: our input sequence "The fat cat sat on the" is going to
-give us six outputs, and the targets of those six outputs will be the tokens in
-"fat cat sat on the mat" -- which explains why our training targets are the input
-sequence shifted leftwards, with one extra word added to the end -- something that
-deeply puzzled me [way back near the start of this series](/2024/12/llm-from-scratch-3).
-
 That's pretty cool, because we're getting six separate training "runs" from one
 input sequence.  And of course, during training we're likely to be running batches
 of sequences through, each with its own shifted-left target sequence.
 
----
-
-
-The first step in understanding the loss function that we want to use for these batches
-of input sequences, at least for me, was to realise that every one of these sub-sequence/target pairs
-can be treated independently.  So, if we had a batch size of one and just fed in
-"The fat cat sat on the", we'd have six separate logits vectors, each of which needed
+For me, the first step in understanding the loss function that we want to use for these batches
+of input sequences was to realise that every one of these prefix sequence/target pairs
+can be treated as stand-alone.  So, if we had a batch size of one and just fed in
+"The fat cat sat on the", we'd have six separate logit vectors, each of which needed
 to be evaluated against a single target token.
 
 And if our batch size is more than one, the same applies.  From the viewpoint of calculating
 the loss function, if we have $b$ sequences in our batch, each of $n$ tokens, and
-so we get $b \times n$ logits vectors -- and of course we have the same number of
+so we get $b \times n$ logit vectors -- and of course we have the same number of
 target tokens -- then
-it doesn't really care that lots of the input sequences involved are subsequences of each other.
-It just has a bunch of "independent" results to compare to their targets.
+it doesn't really matter that lots of the input sequences involved are prefixes of each other.
+We just have a bunch of stand-alone results to compare to their targets.
 
 For each one, we just work out a loss
 for that pair -- and then we can aggregate all of those losses together at the end.
@@ -36225,10 +36199,10 @@ all of the individual sequence-target losses!
 But how do we work out those individual losses?  That's where cross entropy
 loss comes in.
 
-### Cross-entropy loss
+### Cross entropy loss: the "how"
 
 Before I started reading this part of the book, I had an inkling of what you might do.
-Let's imagine an LLM that has a three-token vocab, "the", "fat", and "cat".  We've fed
+Let's imagine an LLM that has a three-token vocab.  We've fed
 in some sequence, and we've received logits.  Let's say they look like this:
 
 ```
@@ -36251,21 +36225,24 @@ target in the same form as the softmaxed output, as a one-hot vector:
 [0.0, 1.0, 0.0]
 ```
 
-So, I thought, perhaps there's some way we can write a function that expressed how far
-off each position in that first vector was from the second and combined those numbers,
-we'd have something solid.  Our error would guide the training process towards
+So, I thought, perhaps we can write a function that works out how far
+off the number in each position in that first vector is from its counterpart in the
+second, then combines those differences in some way to get an aggregate loss.
+That would guide the training process towards
 reducing the numbers in positions 0 and 2 in the list, and increasing the number in position
 1, edging it slightly towards the right output.
 
-And that's maybe that's not a bad idea, but we can actually do it more simply.  If
-all we do is measure how far off the prediction in the target positions is --
+Maybe that's not a bad idea, but we can actually do it more simply.  If
+all we do is measure how far off the prediction in the target position is --
 that is, how far away 0.0387 is from 1 in the example -- and use that to work out
-our gradients, we'll train the LLM to increase that value.  But that has a huge beneficial
+our gradients, we'll train the LLM to increase that value.
+
+That has a huge beneficial
 side-effect: because the sum of all of the outputs of softmax must be 1, by adjusting
-that one upwards, we're adjusting the others downwards -- so, we get the adjustment
+that one upwards, we're adjusting the others downwards "automatically" -- so, we get the adjustment
 to those numbers for free, without having to work out some kind of loss number for
 every value in our logits vector -- and remember, there are 50,257 of those with the
-GPT-2 vocab size.  [^3]
+GPT-2 vocab size.  [^2]
 
 So, we want a loss function that can express how far our prediction for the target
 token -- let's stick with the example of 0.0387 -- is from 1.  There's a pretty obvious one.  The
@@ -36275,31 +36252,24 @@ $$
 L = 1 - p_\text{correct}
 $$
 
-...where $p_\text{correct}$ is the probability that our LLM assigned to the target (eg. the correct) token.
+...where $p_\text{correct}$ is the probability that our LLM assigned to the target (ie. the correct) token.
 That will be zero if our LLM was perfectly correct and predicted that it was going
 to be the target, and increasingly more than zero (up to one) if it's wrong.
 
-The problem appears to be that if we do this, while we get gradients pointing in the
-right direction, they're always quite small -- indeed, when the model is very wrong,
-they're at their smallest, which is really bad because that's when we need the gradient
-signal the most.
-
-I did ask various LLMs to explain the maths behind that
-to me, but after a while it started to feel like one of the side quests I've sworn
-to avoid while working through this book. [^4]  Something to look into in a future post, perhaps.
-
-So let's move on to what we actually do use:
+However, there is a better one -- I'll explain why it's better later on --
+and this is what we use:
 
 $$
-L = - \ln p_\text{correct}
+L = - \log p_\text{correct}
 $$
 
-Remember that the natural logarithm $\ln$ is defined such that $\ln x$ is the value --
-let's call it $y$ such that $e^y = x$.
+Remember that the logarithm $\log$ is defined such that $\log x$ is the value --
+let's call it $y$ -- such that for some "base", $b$, $b^y = x$.
 
-So, $\ln 1$ is 0, because that's the power of $e$ that is $1$.  And $\ln x$,
+So, $\log 1$ is 0, because that's the power of any base that is $1$.  And $\log x$,
 if $x < 1$, is going to be a negative number -- and the size of that negative number
-will increase quite rapidly as we get closer to zero:
+will increase quite rapidly as we get closer to zero.  Using the natural logarithm,
+where the base is Euler's number, $e$:
 
 ```python
 In [53]: for ii in [0.9, 0.5, 0.4, 0.3, 0.2, 0.1, 0.01]:
@@ -36317,108 +36287,383 @@ In [53]: for ii in [0.9, 0.5, 0.4, 0.3, 0.2, 0.1, 0.01]:
 Now we want our error function to return a positive value, but that's fine -- we just
 flip the sign with that negation operator in the formula for $L$ above.
 
-That, it appears, has the right properties for good gradients.  It's a special case of the
+That's a special case of the
 *cross entropy loss function*, and all we need to do to work out a loss for a run of a training
-batch for $b$ sequences, each $n$ long, is to calculate the loss using this function for each
-of the $b \times n$ subsequences using the targets that we have for each, and then
+batch for $b$ sequences, each $n$ tokens long, is to calculate the loss using this function for each
+of the $b \times n$ prefix sequences using the targets that we have for each, and then
 take the average.
 
 That's essentially what Raschka does in the book in his example (although instead of negating the
-logs and then averaging them, he averages first and then negates the result),
+logs and then averaging them, he averages first and then negates the result).
 And in the PyTorch code that follows, where he uses the built-in `torch.nn.functional.cross_entropy`
 function, he just does a bit of flattening first so that our outputs are converted
 from a $b \times n \times v$ tensor of logits to a $b \cdot n \times v$ tensor -- that is,
-to treat subsequences from different batches as being "the same" -- and likewise the targets
-from a $b \times n$ to a vector of length $b \cdot n$.
+to treat prefix sequences from different batches as being "the same" -- and likewise the targets
+from a $b \times n$ to a vector of length $b \cdot n$.  (He also just passes the logits
+directly in, rather than softmaxing first, as the PyTorch function does the softmax for you.)
 
 And to understand what's going on in the rest of the chapter, I think that's all we need!
 
-But this cross-entropy thing interested me a bit, and I wanted to dig in a bit.  It is
+But this cross entropy thing interested me, and I wanted to dig in a bit.  Why do we
+use this thing with the logarithm, and why is it called "cross entropy"?  It is
 a bit of a side-quest, but I don't like the idea of using something whose name I don't
-understand.  [^5]  How does this relate to entropy, and what is it cross with?
+understand.  [^3]  How does it relate to entropy, and what is it cross with?
 
-If you're not interested in that, do feel free to move on now -- you don't need to read the next bit.
-But if you're like me and want to dig in a bit, read on...
+If you're not interested in that, do feel free to move on now -- you don't need to read the next bit
+for the rest of the book.
+But if you're like me and want to dig in, read on...
 
 
-### What does cross entropy mean?
+### Digging into cross entropy
 
-Let's look at the function again:
+Understanding cross entropy loss means understanding what entropy is, then what
+*cross* entropy is, so let's kick off with the former.
+
+Entropy in physics -- strictly, thermodynamics -- is loosely speaking how disordered
+or "messy" a system is.  That much I remember from my undergraduate days -- and it's
+a concept that pops up in literature a lot.  In a closed system, with no energy coming
+in (and therefore nothing to "tidy things up") entropy always increases.  Writers of
+science (and other) fiction love to bring it up because "things get worse if you don't
+fight against disorder" is a lovely plot point, both metaphorically and concretely.
+
+Obviously that's a very handwavy summary, but I think that's all we need to move on to
+what it means in the context of information theory.  Back in the 1940s and 50s, Claude Shannon
+wanted to quantify how much information was actually expressed in a message.  Let's say that
+you're receiving numbers from some source.  If it always sends zeros, then it's low-information.
+If it just sends roughly equal numbers of zeros and ones, there's more information there.
+If it's a wide range
+of different numbers, it's even higher information -- and the distribution of numbers could also influence
+how information-rich it is.  How to capture that mathematically?
+
+
+### Entropy for probability distributions
+
+Let's take a more concrete example.  Imagine you needed to work out what to wear for the day (without looking at the weather forecast);
+if you were in the Sahara desert, you could be pretty certain that it was going to be hot and
+sunny.  On the other hand, if you were in London during the early springtime, it could be anything
+from warm and sunny to torrential rain.  If we were to express that as probability
+distributions, then for the Sahara the probability of "hot and sunny" is really high
+and everything else is low, whereas for London the distribution is much flatter, with
+most outcomes having roughly the same probability.
+
+There's an obvious parallel between these "neat" and "messy" distributions in probability
+and the "neatness" of a low-entropy physical system and the "messiness" of a high-entropy
+one.  Shannon wanted to create a formula that would allow us to take a probability
+distribution -- the distribution of the numbers being sent by that source -- and
+get a single number that said what its entropy was -- how messy it was.
+
+Let's start defining some terms.  We have a probability distribution that says for
+each possible outcome, how likely it is.  We'll treat that as a function called $p$, so $p(x)$ is the probability
+of the weather being $x$, where $x$ could be "sunny", "rainy", etc.
+
+We want to write a function $H(p)$, that will take that probability distribution $p$ and return
+a number that represents its entropy across all values of $x$.
+
+That's (fairly) obviously going to have to look at the value of $p$ for each possible $x$ and
+somehow munge them together.  So the first step is to work out some way of working out
+how much a given $p(x)$ contributes to entropy.
+
+Shannon decided to start with a measure of how *surprising* $p(x)$ is -- that is, if
+outcome $x$ happened, how surprised would we be?  We're generally surprised when low-probability
+things happen, and less surprised when high-probability things happen.  If we're in
+London and it starts drizzling, we're not all that surprised.  If we're in the middle of
+the Sahara desert and it starts drizzling, we're going to be a bit disconcerted.
+
+That means that we want a number for $p(x)$'s contribution to entropy that is high
+for low-probability events, and low for high-probability events. But
+now we're kind of back to where we were earlier; how surprising $p(x)$ is could, it
+seems, be reasonably expressed as $1 - p(x)$.
+
+Let's chart that:
+
+![p(x) against 1 - p(x)](/post-assets/llm-from-scratch-20-starting-training-cross-entropy-loss/naive_surprise.png "p(x) against 1 - p(x)")
+
+Looking at it, something stands out that makes it not quite ideal for surprise:
+Let's say that something happens one in a thousand times -- that is, its probability
+is 0.001, so this surprise measure would be 0.999.  Now let's say that something else
+happens half the time, so its probability is 0.5 and so is its surprisingness.  Now
+imagine something that happens almost all of the time, say probability 0.999 so surprise
+0.001.  The "jump" in surprisingness from something that happens almost always to something
+that happens half the time isn't a huge step, at least for me intuitively.  The jump
+from something that happens half the time to something that is a one in a thousand
+chance is much bigger!  But they're equally spaced in our "surprise space".
+
+Thinking about it in terms of information -- something that happens half the time
+doesn't add on much information, but if something happens that is a one in a thousand
+chance, it's told us something important -- at the very least, that this occurrence is
+possible, even if it's not likely.
+
+There are a couple of other more mathematical points too:
+
+1. Let's imagine that we're
+    looking at combined probabilities.  The probability of rolling a three on a die is, of
+    course, $1/6 \approx 0.167$.  So on this measure its surprisingness would be about $0.833$.
+    Now let's think about the probability of rolling two threes in a row.  High-school
+    probability tells us that this is $(1/6) \times (1/6) \approx 0.028$, so its surprisingness
+    is $0.972$.  There's no obvious connection between those two surprise numbers,
+    $0.833$ and $0.972$.  What would be nice (and you'll see why shortly) would be if
+    we could add the surprisingness of two independent events like these dice rolls
+    together to get the surprisingness of them both happening.
+2. This is almost a more mathematical way of looking at the example I gave above about the
+    one in a thousand, 50:50 and almost-certain events, but as you can see from the chart,
+    the derivative of the surprise function is constant -- that is, the rate of change of
+    surprisingness is the same at a zero probability as it is at 0.5 as it is at 1.
+    Especially in our case of training an LLM, that doesn't sound quite right -- and
+    as I understand it, that's a general problem in other domains.
+
+So, what alternative do we have?  We want something that has nice high surprise factors
+for low probability events, and has the nice additive property where the surprise for two independent
+events happening is the sum of their respective "surprisingnesses".
+
+Given what we wind up using above, you probably
+won't be surprised to know that it's $- \log{p(x)}$.
+
+Let's chart that using the natural logarithm [^4]:
+
+![p(x) against - log(p(x))](/post-assets/llm-from-scratch-20-starting-training-cross-entropy-loss/real_surprise.png "p(x) against - log(p(x))")
+
+We can see straight away that the initial problem I described above is gone.  Something
+that is almost certain to happen will have a surprise number of roughly zero,
+something that happens with 50:50 chances will be about 0.7, but something that
+happens one in ten times will be about 2.3.  Surprisingness increases rapidly
+for very unlikely things -- a one in a thousand chance has a surprisingness
+of about 6.9, for example, and a one in a million chance has 13.8.
+
+The derivative is also not constant as a result; that's pretty obvious from the chart.
+
+But the neat bonus is that you can add these surprise factors together!  If you remember
+your high school maths, you can prove it, but let's just use the dice example from above.
+The surprisingness of rolling a three is:
 
 $$
-L = - \ln p_\text{correct}
+- log(1/6) \approx 1.79
 $$
 
-As I said, it's a special case of the cross entropy function, which in its
-full form looks like this:
+...and the surprisingness of rolling two threes is
 
 $$
-L = - \sum_x p(x)\, \log q(x)
+- log(1/6 \times 1/6) \approx 3.58
 $$
 
-NOTES for this section:
+That is, you can add together the surprisingness of two independent events and get
+how surprising both of them happening is.
 
-ChatGPT suggests
+That's pretty nifty -- and so, we have our formula for how surprising a particular
+outcome, $p(x)$, is.
 
----
-It’s a simple version of the cross-entropy loss function — and because our training targets are one-hot (only one token is correct), the general formula reduces to this neat
-−
-ln
-⁡
-𝑝
-correct
-−lnp
-correct
-	​
+But we want to work out the entropy for all of $p$ for all $x$s, so we need to combine
+them somehow.  What should the contribution of this number, the surprise of $p(x)$, be
+to that entropy?
 
-.”
----
+Well, we need to scale it.  Something that is surprising but rarely happens should
+contribute less to entropy than something that is surprising but happens very often.
+And conveniently, we already know how likely $x$ is to happen -- it's $p(x)$!
 
-Need to expand on that, or work it out from first principles for explanation.
+So for each possible outcome, we have a way to work out how much scaled surprise it
+should contribute to the entropy:
 
-Re: ln versus log:
+$$
+(- \log p(x)) \cdot p(x) = - p(x) \cdot \log p(x)
+$$
 
-ChatGPT:
-This is usually computed with natural logs (base
-𝑒
-e), so the units are called nats. Using base 2 would give the same result in bits — just rescaled.
+That may sound very circular; both halves of that formula -- the surprisingness
+and the scaling factor -- are essentially the same thing!  And I must admit that I'm
+a bit put off by it too.  I know that the surprise number represents how much new
+information we get by seeing the outcome, and the probability is how often we get
+that information, but it still doesn't sit quite right.
+
+But that's a me problem, not a problem with the equation -- and the good news is that when we come on to cross entropy (as
+opposed to the regular entropy that we're looking at right now), it becomes a little
+more clear.
+
+So let's finish off entropy first.  We have a scaled surprise number for all of the
+individual $x$s, and we want a combined one for the whole distribution $p$.  Now, remember
+that one of the reasons we chose the particular measure for surprise that we did
+was that they could be added to get a meaningful number.  So that's exactly what we do
+with these scaled surprise numbers!  We just add together the scaled surprise for every
+value of $x$, and that gives us the entropy of our distribution -- or, in mathematical
+notation:
+
+$$
+H(p) = - \sum_x p(x) \cdot \log p(x)
+$$
 
 
+
+### Cross entropy
+
+So now we have a formula that can tell us how high the entropy of a distribution
+is.  How does that help with training our LLM?  That's where the "cross" in cross
+entropy comes in.
+
+Let's think about our LLM.  It's trying to predict the next token in a sequence; you've
+fed it "the fat cat sat on the" [^5].  Internally it has some kind of model about what
+the next token should be, and it's spat out its logits for that sequence, which
+we run through softmax to get our probability vector where the value at
+position $n$ is its prediction of the probability that the next token will be the one
+with the ID $n$.
+
+Now, that vector is a probability distribution -- let's call it $q$.  And it has its
+own entropy, $H(q)$.  For "the fat cat sat on the", then for a trained LLM, it's likely to be quite low-entropy
+because "mat" is high-probability (low-surprise) and most of the other tokens are
+low-probability (so high surprise).   But if you were to feed it garbage like "Armed heNetflix",
+it would likely have no idea about what the next token might possibly be and would return
+a flatter, higher-entropy distribution.
+
+That in itself is kind of interesting (at least to me), but what we actually want to do
+is find out how accurate the model is at predicting the next token.  And
+for that, we need to modify the equation a little.
+
+Remember that the per-outcome calculation for entropy was "how surprising is this outcome",
+which was $- \log p(x)$, times "how frequent is this outcome", which was just $p(x)$.
+
+In this new world where we're predicting next tokens, the surprisingness is actually
+an attribute of the model.  The less likely the LLM thinks that a particular token is,
+the higher the surprise factor if that token actually turns out to be the next one.
+
+But the frequency is an attribute of the real world -- whether or not that is a valid
+next token in the training data.
+
+So, we extend the formula so that instead of just measuring the entropy of a probability
+distribution, it measures the entropy of that distribution if you have a model that's predicting
+a (potentially different) distribution.  We've already said that the LLM's predicted
+distribution is $q$, so let's call the real-world distribution $p$ and define cross entropy:
+
+$$
+H(p, q) = - \sum_x p(x) \cdot \log q(x)
+$$
+
+You can see that the surprisingness of each outcome is based on the LLM's prediction $q$,
+but the scaling factor to allow for how often it comes along is from reality, $p$.
+
+That actually makes more sense to me than the original pure-entropy formula!  The two
+halves of the per-outcome calculation are clearly different.
+
+So now we have the beginnings of our loss function.  The higher the cross entropy
+between reality and the model's prediction, the higher the loss.  We want our training
+to guide things in a direction that lowers the cross entropy between our model's predictions
+and reality. [^6]
+
+
+### But after all that it just simplifies away
+
+But how do we go from that simple but non-trivial formula down to the "just do minus the log
+of the prediction for the actual next token" calculation that we had back at the start of
+this marathon?
+
+Let's think about what $p$ and $q$ are in an actual training run.  We've fed in
+"the fat cat sat on" and we're trying to score the predictions from the LLM --
+that's $q$, which is a prediction per token.
+
+Let's say that our training data, predictably enough, has "mat" as the next token.
+We want to represent that as a probability distribution -- and we only have one
+possibility.  That means that the "real" distribution $p$ is basically a one-hot
+vector -- every number is zero apart from the one for "mat", which is one.
+
+And if you look at the equation for cross entropy above, that means that every number
+in our big sum for values of $x$ that are not "mat" will be
+
+$$
+0 \cdot \log q(x) = 0
+$$
+
+And for $x$ being "mat", it will be:
+
+$$
+1 \cdot \log q(x) = \log q(x)
+$$
+
+So the whole equation, for one-hot distributions of $p$, collapses to
+
+$$
+H(p, q) = - \log q(x)
+$$
+
+...where $x$ is the one-hot outcome.  And that's exactly the equation we use.
+
+
+### Certainty
+
+One thing that might feel slightly strange about this is that we're being so "certain"
+about the correct output.  We've fed in "the fat cat sat on the" and then calculated
+cross entropy based on a one-hot that expresses something like "the right answer is
+definitely 'mat', no ifs or buts".
+
+That, of course, is wrong!  Even though "the fat cat sat on the mat" is a cliché,
+and so "mat" is really very likely indeed, the next token could also reasonably be "dog" or "lap" or something
+else entirely.
+
+I can imagine that you could actually do some kind of training where you fed in
+multiple possibilities for a target -- that is, instead of using a one-hot vector,
+you'd use a vector that expressed the true distribution of the possible next tokens
+after that sequence, so "mat" would be high, "dog" and "lap" a bit lower, and impossible
+words like "eat" could be zero.  Then you'd use the full cross entropy equation instead
+of this stripped-down version. [^7]
+
+But that would be very hard to set up -- imagine trying to work out sequence/next-token probability
+vectors across the kind of huge pile of training data used for LLMs.  And in reality,
+because we're doing gradient descent, our training that pushes the LLM in the direction
+of "mat" for this sequence will also be mixed in with training on other sequences with
+other tokens like "dog" or "lap", each of which nudges the parameters in its preferred direction,
+and eventually they'll pretty much average out to the right distribution,
+because it really will see "mat" more than the alternatives.
+
+And, in practice, that works perfectly well, and that's why LLMs are so good at next-token prediction.
+
+
+
+### Wrapping up
+
+So that's it -- we use a simple formula to work out the cross entropy of the LLM's prediction
+against the reality as expressed by our training targets.  It's what the more complex
+cross entropy function collapses to when our training targets are expressed as "one-hot"
+probability distributions.  We work that out for all prefix sequence/target pairs across all
+items in our training batch, average them, and that gives us a loss that -- as
+we reduce it through gradient descent -- minimises the cross entropy and thus the error.
+
+I hope that was useful and at least reasonably clear!
+
+I found digging into this quite fun, and I'm pretty sure I've got the details
+mostly correct -- but if anyone reading knows better, as always the comments are
+open below for corrections, or of course requests for clarification.
+
+Coming up: the next part of the training story that made my $- \log p(x)$ quite high --
+perplexity.
+
+[Here's a link to the next post in this series](/2025/10/llm-from-scratch-21-perplexed-by-perplexity).
 
 
 
 
 [^1]: I'm going to assume that you're familiar enough with gradient descent that
     that reminder is all you need to follow along.  If you're reading this and would
-    be interested in a post breaking it down, please leave a comment on this post!
+    be interested in a post breaking it down, please leave a comment below!
 
-[^2]: You may have heard of "hill-climbing" AI techniques, where you're actually trying
-    to *maximise* some function -- for example, in evolutionary algorithms.  You can loosely
-    see it as the same thing, but with the sign flipped -- though of course if you don't
-    know what the "perfect" response might be, only how different options are ranked against
-    each other, Loosely speaking, if you're doing gradient descent then you want to minimise
-    loss (which makes sense, you're going downwards).
-
-[^3]: Of course, we're reducing the *sum* of all of the other numbers in the probability
+[^2]: Of course, we're reducing the *sum* of all of the other numbers in the probability
     vector, so it's conceivable that we might somehow increase some of them, while decreasing
-    the others by enough that on net the sum was smaller enough to allow for the increase in
+    the others by enough that on net the sum was small enough to allow for the increase in
     the target probability.  That's why I said my original idea might not be a bad one,
     despite it being 50,000 times slower (I don't think the loss function is a bottleneck,
-    so I'm not being entirely facetious there).
+    so I'm not being entirely facetious there).  See also the section later on about the
+    "certainty" of the simplification of the cross entropy function.
 
-[^4]: At this point, I'm treating as a side quest anything that, when I dive into it, I see the word
-    "Jacobian" cropping up.  It feels like a good heuristic, even though I know I'm
-    going to have to learn this stuff sooner or later!
+[^3]: TBF I'm doing exactly that with softmax, and should backfill that sometime soon too.
 
-[^5]: TBF I'm doing exactly that with softmax, and should backfill that sometime soon too.
+[^4]: I'm choosing the natural logarithm because most of the functions in (eg.) PyTorch seem to use it,
+    but it actually doesn't matter much which base you use, so long as you're consistent.
+    Useful titbit of information: if you use
+    base 2, then the entropy number you get at the end of the calculations is said to be
+    in bits, but if you use the natural logarithm, it's in *nats*.
 
+[^5]: Yup, we're back to that one again :-)
 
+[^6]: It's worth noting that the entropy of the model's own predictions -- that
+    is, $H(q)$ -- won't necessarily go down; indeed, it might increase.  Imagine an
+    LLM that had only ever seen "the fat cat sat on the mat" seeing "the fat cat sat on the
+    lap" for the first time -- that might actually increase its entropy
+    for the output probability distribution.
 
-
-
-
-
-
+[^7]: I later learned from Claude that this does exist and is called "label smoothing".
 
 
 
@@ -36436,3 +36681,509 @@ e), so the units are called nats. Using base 2 would give the same result in bit
 
 <|article-end|>
 
+<|article-start|>
+
+---
+slug: llm-from-scratch-21-perplexed-by-perplexity
+title: Writing an LLM from scratch, part 21 -- perplexed by perplexity
+date: 2025-10-07 20:00:00+00:00
+state: published
+categories: ai, llm-from-scratch, til-deep-dives
+description: Raschka calls out perplexity in a sidebar, but I wanted to understand it in a little more depth
+---
+
+I'm continuing through chapter 5 of [Sebastian Raschka](https://sebastianraschka.com/)'s book
+"[Build a Large Language Model (from Scratch)](https://www.manning.com/books/build-a-large-language-model-from-scratch)", which
+covers training the LLM.  [Last time](/2025/10/llm-from-scratch-20-starting-training-cross-entropy-loss)
+I wrote about cross entropy loss.  Before moving on to the next section, I wanted to
+post about something that the book only covers briefly in a sidebar: perplexity.
+
+[Back in May](/2025/05/llm-from-scratch-15-from-context-vectors-to-logits), I thought I had understood it:
+
+> Just as I was finishing this off, I found myself thinking that logits were interesting
+> because you could take some measure of how certain the LLM was about the next token
+> from them.  For example, if all of the logits were the same number, it would mean that
+> the LLM has absolutely no idea what token might come back -- it's giving an equal chance
+> to all of them.  If all of them were zero apart from one, which was a positive number,
+> then it would be 100% sure about what the next one was going to be.  If you could
+> represent that in a single number -- let's say, 0 means that it has only one candidate
+> and 1 means that it hasn't even the slightest idea what is most likely -- then it
+> would be an interesting measure of how certain the LLM was about its choice.
+>
+> Turns out (unsurprisingly) that I'd re-invented something that's been around for a long time.  That number is called
+> perplexity, and I imagine that's why the largest AI-enabled web search engine borrowed
+> that name.
+
+I'd misunderstood.  From the [post on cross entropy](/2025/10/llm-from-scratch-20-starting-training-cross-entropy-loss), you can
+see that the measure that I was talking about in May was something more like the
+simple Shannon entropy of the LLM's output probabilities.  That's a useful number,
+but perplexity is something different.
+
+Its actual calculation is really simple -- you just raise the base of the logarithms
+you were using in your cross entropy loss to the power of that loss.  So if you were
+using the natural logarithm to work out your loss $L$, perplexity would
+be $e^L$, if you were using the base-2 logarithm $\log_2$ then it would be $2^L$, and so on.
+PyTorch uses the natural logarithm, so you'd use the matching `torch.exp` function.
+
+Raschka says that perplexity "measures how well the probability distribution predicted
+by the model matches the actual distribution of the words in the dataset", and that it
+"is often considered more interpretable than the raw [cross entropy] loss value because it
+signifies the effective vocabulary size about which the model is uncertain at each step."
+
+This felt like something I would like to dig into a bit.
+
+<!--more-->
+
+When we're training an LLM, the cross entropy loss we get after one step is based
+on a whole bunch of different sequences and their associated targets.  A sequence like
+"The fat cat sat on the", with its target " fat cat sat on the mat", will have one prefix
+sequence for each token in the input sequence, and each one will map to one target
+token:
+
+* "The" -> " fat"
+* "The fat" -> " cat"
+
+...and so on.  And every other input sequence/target sequence in the batch will have
+the same.
+
+Our cross entropy loss is the arithmetic mean of all of those per-sequence/target
+losses.
+
+To unpick perplexity, I found it easiest to start thinking about what it meant on a
+per-sequence/target level -- as always, I'll use
+
+```
+"The fat cat sat on the" -> " mat"
+```
+
+Now, in the [last post](/2025/10/llm-from-scratch-20-starting-training-cross-entropy-loss),
+we found that the loss for this specific pair was this:
+
+$$
+L = - \log p_\text{correct}
+$$
+
+...where $p_\text{correct}$ was the probability that the model assigned to " mat" -- that is,
+the correct answer -- in the distribution we got by softmaxing the logits.  This is what
+the full cross entropy formula reduces to if the real distribution that we're comparing
+our model to is just a one-hot distribution with a probability of one for the target token,
+and zero for everything else.
+
+Let's work out the perplexity for that; if we use the natural logarithm $\ln$, then we
+need to raise it to the power of $e$, so we get this:
+
+$$
+\text{Perplexity} = e^{- \ln p_\text{correct}}
+$$
+
+I had to [refresh](https://www.mathcentre.ac.uk/resources/uploaded/mc-ty-logarithms-2009-1.pdf)
+my knowledge of logarithms a bit for this next bit, but we can simplify that.  (Apologies
+for readers who are more current in this for the step-by-step derivation.)
+
+To start: $\log 1$ in any base is $0$, so we can rewrite the perplexity equation in a slightly
+more complex form as:
+
+$$
+\text{Perplexity} = e^{\ln 1 - \ln p_\text{correct}}
+$$
+
+
+There is an identity for all logarithms:
+
+$$
+\log{\frac{x}{y}} = \log x - \log y
+$$
+
+So we can apply that rule and get:
+
+$$
+\text{Perplexity} = e^{\ln{\frac{1}{p_\text{correct}}}}
+$$
+
+By the definition of logarithms,
+
+$$
+b^{\log_b x} = x
+$$
+
+...so we can finally simplify to:
+
+$$
+\text{Perplexity} = \frac{1}{p_\text{correct}}
+$$
+
+Phew.  That exercised a few brain cells that had been sleeping since the early 90s.
+Let's think about what it means in some specific cases.
+
+Firstly, imagine that the LLM is 100% certain that the next token is " mat".  That means
+that the probability vector it has output (logits post-softmax) has a one in the position
+for " mat" (and therefore zeros everywhere else).  That means that $p_\text{correct} = 1$,
+so perplexity is $1/1 = 1$.
+
+Now imagine that the LLM had no idea which token might come next.  We'll assume that its
+output is a probability distribution where every number is $1/N$, where $N$ is the number
+of tokens in the vocabulary.  That means that our perplexity is $N$.
+
+This gives a hint as to what Raschka meant by "signifies the effective vocabulary size about which the model is uncertain at each step".
+In the first case, it was certain -- that is, the subset of the vocabulary that it was
+considering as options had a size of $1$, and that's the number we have for perplexity.
+In the second case, it was considering all $N$ tokens in the vocab as possibilities,
+so that's the number we have for perplexity.
+
+We can extend that -- let's say that it was dithering between four out of the $N$
+tokens in the vocabulary of $N$, thinking they were all equally likely (and the others
+had zero probability).  Each of those would have a probability of $1/4$, and so
+perplexity would be $4$.
+
+Or would it?  There is a wrinkle.
+
+Remember, we're only considering the probability it assigns to the correct token -- our
+target for the training.  Let's say that we have a four-token vocab, and the target in
+the training item we're considering is the second token (index 1 in the lists that follow).
+
+We might get this probability distribution:
+
+```
+[0.25, 0.25, 0.25, 0.25]
+```
+
+But we might also get this one:
+
+```
+[0.0, 0.25, 0.0, 0.75]
+```
+
+In both of those cases, $p_\text{correct}$ is $0.25$, so our perplexity will be $4$.  But
+while in the first case we could reasonably say that it was uncertain about which option
+to pick from a vocab size of four, in the second case it's really only looking at
+a vocab size of two at the most -- indeed, a number between one and two would seem reasonable,
+probably closer to one.
+
+The important thing, though, is that it was *wrong* about the choice it ascribed the
+high probability to in that second case.  So I think we can refine the description a little.  Perplexity doesn't measure how many
+vocab items the model was choosing between (which, again, would be something like
+the Shannon entropy of the probability distribution) -- that's an oversimplification
+of what Raschka was saying.  It has to include some kind of reference to what the *right*
+answer is.
+
+Let's go back to [something from the last post](/2025/10/llm-from-scratch-20-starting-training-cross-entropy-loss#certainty),
+the section on "Certainty".
+Our training for LLMs is slightly artificial, at least in the case of a single
+sequence-target pair.  In our example where we're feeding in "The fat cat sat on the" and
+telling it that the target is " mat", we're using a one-hot vector for the target
+distribution -- that is, we're saying that the sequence *must* continue with " mat".
+That's obviously incorrect -- it could be any of a number of possible tokens, like " lap" or
+" dog" or " desk".
+
+We don't do that kind of "label smoothing" training with LLMs, because it would be hard
+to set up and we're training on so much data that the different gradient updates average
+out to the real distribution over time.  But imagine if we did.  We have a probability
+distribution $p$ which is the real distribution of the next tokens, and our LLM's
+prediction $q$, so cross-entropy loss (using natural logarithms) is:
+
+$$
+H(p, q) = - \sum_x p(x) \cdot \ln q(x)
+$$
+
+So our perplexity is:
+
+$$
+\text{Perplexity} = \exp\left(- \sum_x p(x) \cdot \ln q(x)\right)
+$$
+
+Pulling the negation back inside the sum we get:
+
+$$
+\text{Perplexity} = \exp\left(\sum_x p(x) \cdot (-\ln q(x))\right)
+$$
+
+Now we can apply that $-\ln a = \ln \frac{1}{a}$ rule we went through step-by-step above:
+
+$$
+\text{Perplexity} = \exp\left(\sum_x p(x) \cdot \ln \frac{1}{q(x)}\right)
+$$
+
+Now another high-school rule; if you take something -- say, $z$ -- to the power of $a + b + c$
+-- that is, $z^{a + b + c}$ -- it's
+the same as multiplying $z^a$, $z^b$ and $z^c$.  For example:
+
+$$
+10^{1+2+3}
+= 10^1 \times 10^2 \times 10^3
+= 10 \times 100 \times 1000
+= 1000000
+= 10^6
+$$
+
+I don't remember seeing it at school, but there is a big-pi operator for doing the
+product of a series to match the familiar big-sigma for sum, so we can express that
+(for the $\exp$ operator that we're using to mean $e$ to the power of something) as:
+
+$$
+\exp\left(\sum_i x_i\right) = \prod_i \exp(x_i)
+$$
+
+So we can apply that to our perplexity equation to get this:
+
+$$
+\text{Perplexity} = \prod_x \exp\left(p(x) \cdot \ln \frac{1}{q(x)}\right)
+$$
+
+Yet one more high-school rule:
+
+$$
+z^{a \cdot b}
+= (z^a)^b
+$$
+
+So let's swap around our terms in the $\exp$ function:
+
+$$
+\text{Perplexity} = \prod_x \exp\left(\ln \frac{1}{q(x)} \cdot p(x)\right)
+$$
+
+...then apply that:
+
+$$
+\text{Perplexity} = \prod_x \left( \exp\left(\ln \frac{1}{q(x)}\right)\right)^{p(x)}
+$$
+
+Now, clearly $\exp(\ln x) = x$, so we can simplify:
+
+$$
+\text{Perplexity} = \prod_x \left(\frac{1}{q(x)}\right)^{p(x)}
+$$
+
+I hope you found that as fun as I did :-)
+
+Now, the $1 / q(x)$ that we have there is the equivalent of the perplexity measure
+that we were using for our original one-hot calculation -- the inverse of the probability
+that the model assigned to a given token.  What we're doing is iterating over all of the
+predictions, working out that number, and taking it to the power of the real-world
+probability of it happening.  Those results are then multiplied together to get our
+overall perplexity.
+
+Let's think of how that works with real numbers.
+
+Imagine that a token doesn't exist
+at all as an option in the real-world probability distribution $p$.  That means that $p(x)$ will
+be zero, so the contribution it makes to the overall perplexity will be its per-token
+perplexity to the power of zero, which is one -- as we're multiplying numbers
+together, that means that it will have no effect.
+
+If it is $0.5$ in the real-world data, then the contribution of the perplexity will be
+scaled down by being square-rooted (that is, raised to the power of $1/2$).
+
+And if it is $1$ in the real-world data, it will be raised to the power of $1$ -- that is,
+it will be fed through unchanged.
+
+So we've got a setup where we're taking the per-token perplexity and we're using
+the real-world probabilities to scale how much it contributes -- the more likely a
+token is in the real world, the higher the power we're raising it to (though these
+powers are all less than one, being probabilities, so each item will contribute less
+than its per-token perplexity).
+
+And, of course, if we feed in a one-hot vector for $p$ then all of the terms but one will have $p(x)$ of
+zero, so they’ll be raised to the power 0 (i.e. 1).  Then for that case where $p(x)$
+is one, it will be passed through unchanged -- that is, it will collapse to the original
+equation:
+
+$$
+\text{Perplexity} = \frac{1}{q_\text{correct}}
+$$
+
+OK, so at this point we've shown that perplexity, if used against a cross entropy loss
+that compares how the LLM is doing with respect to the real world probabilities,
+will give us a number that combines how "confused" the model was about each possible
+output token, scaled by the probability of that token in the real world.  It's not actually
+all that different from cross entropy loss (which is unsurprising, given that it's just a
+number raised to the power of that loss).
+
+How does that help in our world where we're using one-hot vectors?
+
+Let's start by bringing back in something we put aside at the start of this post.
+For a given training run, we have a batch of sequences, with targets for each prefix
+sequence.  So for that run we have $b \cdot n$ sequence/target pairs for a batch
+size of $b$ and a sequence length of $n$.  Let's call that number $T$.
+
+The cross entropy loss we have for the $i$th of those pairs, using our one-hot
+equation, is:
+
+$$
+L_i = - \ln q(t_{correct})
+$$
+
+Now, we're just taking the arithmetic mean of those different per-pair losses to
+work out the cross entropy of the whole training batch.  Let's write that as:
+
+$$
+L = \frac{1}{T} \sum_{t=1}^T - \ln q(t_{correct})
+$$
+
+Now we work out the perplexity:
+
+$$
+\text{Perplexity} = \exp \left( \frac{1}{T} \sum_{t=1}^T - \ln q(t_{correct}) \right)
+$$
+
+Using $-\log a = \log \frac{1}{a}$ again, we get:
+
+$$
+\text{Perplexity} = \exp \left( \frac{1}{T} \sum_{t=1}^T \ln \frac{1}{q(t_{correct})} \right)
+$$
+
+Moving the division inside the sum:
+
+$$
+\text{Perplexity} = \exp \left( \sum_{t=1}^T \frac{1}{T} \ln \frac{1}{q(t_{correct})} \right)
+$$
+
+Back to high school maths:
+
+$$
+a \cdot \log x = \log x^a
+$$
+
+So we can go to:
+
+$$
+\text{Perplexity} = \exp \left( \sum_{t=1}^T \ln \left( \frac{1}{q(t_{correct})} \right)^{\frac{1}{T}} \right)
+$$
+
+Using the rule we used above for converting the exponential of a sum to the product
+of exponentials:
+
+$$
+\text{Perplexity} = \prod_{t=1}^T \exp \left( \ln \left( \frac{1}{q(t_{correct})} \right)^{\frac{1}{T}} \right)
+$$
+
+...and then using our $b^{\log_b x} = x$ rule, we get:
+
+$$
+\text{Perplexity} = \prod_{t=1}^T \left( \frac{1}{q(t_{correct})} \right)^{\frac{1}{T}}
+$$
+
+Now, we could refactor that one step further, like this:
+
+$$
+\text{Perplexity} = \left( \prod_{t=1}^T \frac{1}{q(t_{correct})} \right)^{\frac{1}{T}}
+$$
+
+...which shows that the combined perplexity over all sequence/target pairs is the geometric
+average over all of the per-token perplexities (just as with an arithmetic average of $n$
+numbers, you add them all and then divide by $n$, for the geometric average you multiply
+all of your numbers and then take the $n$th root).  And that's interesting, but let's take another look
+at the first version:
+
+$$
+\text{Perplexity} = \prod_{t=1}^T \left( \frac{1}{q(t_{correct})} \right)^{\frac{1}{T}}
+$$
+
+...and then compare it to the formula we had for perplexity where we're using the full
+cross entropy, comparing our LLM's output to a probability distribution $p$ that captured
+the real distribution of next tokens:
+
+$$
+\text{Perplexity} = \prod_x \left(\frac{1}{q(x)}\right)^{p(x)}
+$$
+
+They're tantalisingly close!  But those exponents are the difference -- in the first one,
+we have a constant $1/T$ exponent, but in the second we have $p(x)$
+
+Now let's imagine that we have done our training run on a really large and diverse dataset, so large and diverse
+that the distribution of targets matches what language as a whole has, and we want to work
+out the perplexity over that big dataset.
+
+As a toy example with essentially the same properties, let's say that all of our training
+sequences are "the fat cat sat on the", and that in reality that sequence is completed by " mat" 60% of
+the time, " lap" 30% of the time, and " dog" 10% of the time.  Conveniently enough,
+we have ten training sequences, six of which have " mat" as the target, three have " lap", and
+one has " dog".
+
+Once again, our perplexity formula is this:
+
+$$
+\text{Perplexity} = \prod_{t=1}^T \left( \frac{1}{q(t_{correct})} \right)^{\frac{1}{T}}
+$$
+
+...and what that means is that we have this bit:
+
+$$
+\left( \frac{1}{q(t_{correct})} \right)^{\frac{1}{T}}
+$$
+
+...multiplied ten times, one for each of our sequence/target pairs.  Six of those times
+will be for the " mat" case, so we can just multiply those together (and substitute $10$ in for $T$,
+as we know that that is what it is):
+
+$$
+\left( \frac{1}{q(\text{mat})} \right)^{\frac{6}{10}}
+$$
+
+We can do the same for the " lap" and " dog" cases too, so the whole formula reduces to:
+
+$$
+\left( \frac{1}{q(\text{mat})} \right)^{\frac{6}{10}} \times \left( \frac{1}{q(\text{lap})} \right)^{\frac{3}{10}} \times \left( \frac{1}{q(\text{dog})} \right)^{\frac{1}{10}}
+$$
+
+Those exponents look familiar!  We said up-front that the real world distribution (which
+our dataset matched) was  " mat" 60% of the time, " lap" 30% of the time, and " dog" 10% of the time.
+
+The equation is the product of the per-token perplexities, taken to the power of their
+respective probabilities, and that is:
+
+$$
+\text{Perplexity} = \prod_x \left(\frac{1}{q(x)}\right)^{p(x)}
+$$
+
+What we've shown is that using the one-hot probability distribution for the targets doesn't actually
+break anything; perplexity is always calculated relative to the actual diversity of the
+possible next tokens in the dataset that we've provided.
+
+So when we average perplexity across a large enough dataset, we're effectively
+estimating the same number we'd get if we compared the model directly against the
+true probabilities of the language itself.
+
+
+### Conclusion
+
+I hope that was an interesting read -- for me, at least, it was a valuable reminder
+of some basic maths from long ago.
+
+And if there's one thing to take away from this, I think it's this:
+
+Perplexity is, like loss, a metric you use on a model against a particular dataset (aka *corpus*).
+It measures how many correct tokens the model was choosing between for each prediction
+it made, weighted by how likely each one is.  In practice, you often see benchmarks saying
+things like:
+
+> Our model achieved a perplexity of 15.2 on our validation set, and 18.5 on WikiText-103.
+
+What that means is that it was effectively choosing between about 15.2 plausible next
+tokens on the validation set, and 18.5 on WikiText -- presumably the latter differed
+from the training data more than the former.
+
+And finally, while you might intuitively think that our use of one-hot probability
+distributions would cause problems with the maths, for a well-balanced (which in practice
+just means "large and diverse") corpus, it all balances out because the more common a particular next
+token choice is in the dataset, the more times it will contribute perplexity to the
+total, and it will all balance out.
+
+That's all for now!  For the next post, let's see if I can wrap up training :-)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<|article-end|>
