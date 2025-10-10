@@ -1,11 +1,10 @@
 {
   "seq_length": 120,
   "batch_size": 24,
-  "patience": 1000000,
   "val_batch_percent": 5,
   "optimizer": "Adam",
   "lr": 0.0003,
   "weight_decay": 0.0,
-  "epochs": 1000000,
+  "epochs": 300,
   "max_grad_norm": 5.0
 }
