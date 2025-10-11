@@ -1,7 +1,7 @@
 ---
 slug: revisiting-karpathy-unreasonable-effectiveness-rnns
 title: Revisiting Karpathy’s 'The Unreasonable Effectiveness of Recurrent Neural Networks'
-date: 2025-10-09 23:00:00+00:00
+date: 2025-10-11 01:00:00+00:00
 state: published
 categories: ai, retro-language-models, til-deep-dives
 description: Andrej Karpathy's 2015 blog post 'The Unreasonable Effectiveness of Recurrent Neural Networks' went viral in its day, for good reason. How does it read ten years later?
@@ -11,7 +11,7 @@ description: Andrej Karpathy's 2015 blog post 'The Unreasonable Effectiveness of
 > and I wanted to broaden my horizons a little.  I've been learning how current LLMs
 > work by going through [Sebastian Raschka](https://sebastianraschka.com/)'s book
 > "[Build a Large Language Model (from Scratch)](https://www.manning.com/books/build-a-large-language-model-from-scratch)",
-> but perhaps it would be useful to learn something more about the history -- where
+> but how about the history -- where
 > did this design come from?  What did people do before Transformers?
 
 Back when it was published in 2015, [Andrej Karpathy](https://karpathy.ai/)'s blog post
@@ -20,7 +20,7 @@ Back when it was published in 2015, [Andrej Karpathy](https://karpathy.ai/)'s bl
 It's easy to see why.  While interesting stuff had been coming out of AI labs for some
 time, for those of us in the broader tech community, it still felt like we were in
 an [AI winter](https://en.wikipedia.org/wiki/AI_winter).  Karpathy's post showed that things
-were in fact moving pretty fast.  In it, he showed that he could train recurrent
+were in fact moving pretty fast --  he showed that he could train recurrent
 neural networks (RNNs) on text, and get them to generate surprisingly readable results.
 
 For example, he trained one on the complete works of Shakespeare, and got output like this:
@@ -36,7 +36,13 @@ Shall be against your honour.
 
 As he says, you could almost (if not quite) mistake it for a real quote!  And this
 is from a network that had to learn *everything* from scratch -- no tokenising, just bytes.
-It went from generating random junk to learning that there was such a thing as words, to
+It went from generating random junk like this:
+
+```
+bo.+\x94G5YFM,}Hx'E{*T]v>>,2pw\nRb/f{a(3n.\xe2K5OGc
+```
+
+...to learning that there was such a thing as words, to
 learning English words, to learning the rules of layout required for a play.
 
 This was amazing enough that it even hit the mainstream.  A meme template you still see everywhere
@@ -46,7 +52,8 @@ favourite is [this one by Keaton Patti for "Queer Eye"](https://x.com/KeatonPatt
 
 The source of that meme template was actually a real thing -- a developer called Andy Herd
 trained an RNN on scripts from "Friends", and generated an almost-coherent but delightfully
-quirky script fragment.  Sadly I can't find it on the Internet any more -- Herd is
+quirky script fragment.  Sadly I can't find it on the Internet any more (if anyone has a copy,
+please share!) -- Herd is
 no longer on X/Twitter, and there seems to be no trace of the fragment, just
 [news stories about it](https://fortune.com/2016/01/21/robot-friends-sequel/).  But
 that was in early 2016, just after Karpathy's blog post.
@@ -58,7 +65,7 @@ from then-recent AI were, and that had a viral impact on Internet culture.  It c
 two years before "[Attention Is All You Need](https://arxiv.org/abs/1706.03762)", which introduced the Transformers architecture that
 powers essentially all mainstream AI these days.  (It's certainly worth mentioning that the
 underlying idea wasn't exactly unknown, though -- near the end of the post, Karpathy
-explicitly highlights that the "concept of attention is the most interesting recent architectural innovation in neural networks"!)
+explicitly highlights that the "concept of attention is the most interesting recent architectural innovation in neural networks".)
 
 I didn't have time to go through it and try to
 play with the code when it came out, but now that I'm on sabbatical, it's the perfect time to fix that!
@@ -91,7 +98,7 @@ has a full implementation of several kinds of RNNs (in Lua, which is what the
 original Torch framework was based on), while I'm using PyTorch's
 built-in `LSTM` class, which implements a Long Short-Term Memory network -- the specific
 kind of RNN used to generate the samples in the post (though not in the code snippets,
-which are of "vanilla" RNNs).
+which are from "vanilla" RNNs).
 
 Over the next few posts in this series (which I'll interleave with
 "[LLM from scratch](/llm-from-scratch)" ones), I'll cover:
@@ -126,13 +133,15 @@ so that I can compare them better.
 ### RNNs
 
 The biggest difference that stands out up-front between RNNs (including LSTMs)
-and traditional neural networks is that RNNs do not have a fixed-size input
+and traditional neural networks is that RNNs, in effect, do not have a fixed-size input
 vector.  (LLMs are a funny case, more about that later.)
 
 It's obvious that a simple neural network has a fixed number of inputs; this one has
 three, for example:
 
 ![A simple neural network](/post-assets/neural-networks-maths/network.svg "A simple neural network")
+
+<small>Figure 1</small>
 
 When you're dealing with sequences of inputs, that's not ideal.  Pieces of text
 -- eg. different prompts for an AI, or different texts to translate -- can vary in length.
@@ -229,7 +238,7 @@ Sebastian Raschka's book, we use GELU -- and ReLU pops up quite a lot too.  From
 I gather, using $\tanh$ was just standard practice for RNNs at the time -- LSTMs use it
 in combination with $\text{sigmoid}$. Though I was interested
 to find while researching this post that [the paper introducing GELU was only published in 2016](https://arxiv.org/abs/1606.08415),
-which is a pretty solid reason ;-)
+which is a pretty solid reason not to use it in 2015 ;-)
 
 Now something larger-scale.
 
@@ -276,7 +285,7 @@ for your one-hot, you'd need 256 inputs, and that might wind up being wasteful a
 Still, the byte-level (or as Karpathy puts it, character-level) nature of these RNNs is
 a *big* difference, and it makes it all the more amazing that these examples
 work.  It feels like LLMs are starting with a huge advantage, because from the get-go,
-even without training, they have some kind of embedded understanding of words -- or at least,
+even without training, they have some kind of built-in understanding of words -- or at least,
 tokens, which are not too far off -- while the RNNs need to learn about the very concept of
 words *ab initio*.
 
@@ -284,17 +293,17 @@ What's interesting is that they seem to learn about it quite quickly -- in the "
 section, Karpathy shows that the fact that sequences tend to consist of space-separated
 groups of letters seems to be learned after not that many iterations.  Nifty :-)
 
+The other end of the network is more familiar-looking, however.  We have as many
+outputs as "byte vocab" that was built up above, and we treat them as logits -- that is,
+we just run them through softmax and use that as a probability distribution over which
+byte (or rather, byte ID) is most likely to appear next. [^3]
+
 One other thing to note before we move on from this is from the "further reading" section --
 he says:
 
 > Currently it seems that word-level models work better than character-level models, but this is surely a temporary thing
 
 Ah well.
-
-The other end of the network is more familiar-looking, however.  We have as many
-outputs as "byte vocab" that was built up above, and we treat them as logits -- that is,
-we just run them through softmax and use that as a probability distribution over which
-byte (or rather, byte ID) is most likely to appear next. [^3]
 
 (One thing that does occur to me is that it might be interesting to give an RNN
 a "front-end" similar to an LLM -- that is, run the input text through the GPT-2
@@ -308,7 +317,7 @@ OK, let's move on to the tricky bit.  How do we train RNNs?
 ### Training RNNs
 
 Karpathy doesn't cover training in the post, but there are throwaway lines that
-do more than nod to it:
+do more than nod to it -- for example:
 
 > *Technical*: Lets train a 2-layer LSTM with 512 hidden nodes (approx. 3.5 million
 > parameters), and with dropout of 0.5 after each layer. We’ll train with batches
@@ -323,62 +332,121 @@ just trained better that way.  Interesting!
 
 But the more interesting thing is how we actually do the training.  The whole concept
 of a hidden state doesn't play well with the model of how neural network training works
-as it's normally taught -- and conveniently, by explaining how it actually does work, we can
-learn what that "BPTT" thing is.
+as it's normally taught.
 
 Let's say we fed in "The fat cat" byte-by-byte; we'd run the network firstly on "T", store the result,
-then run it on "h", store the result, then on "e", store the result, and so on.
+then run it on "h", store the result, then on "e", store the result, and so on.  Our
+hidden state would be updated inside the network and stored each time, so -- for example --
+on that third call, with "e", it would have information that somehow represented that
+it had already seen "T" and "h".
 
 Just as with the LLMs, we have a target sequence
 that we want to be producing -- and just like with LLMs, it's the shifted-left sequence
-plus an extra target -- "he fat cat " (note the space on the end).
+plus an extra target -- we're working per-byte, so that would be "he fat cat " (note the space on the end).  We want the first
+invocation of the RNN, with "T" as its input, to produce "h", then the second to map the
+input "h" to "e", and so on.
 
-And again, just like with LLMs, we use cross entropy loss to evaluate our results, and then
-we can use that to generate gradients and just use those to adjust the parameters.
+And again, just like with LLMs, we use cross entropy loss to evaluate our results.
+We compare whatever sequence we got from the 11 calls to the RNN that processed
+"The fat cat" to the expected output, "he fat cat ", and get a loss.  We then
+use that to generate gradients and just use those to adjust the parameters.  Some
+stripped down PyTorch code that does that:
 
-Simple, right?  But "just" is doing a lot of work in that sentence.  PyTorch will
-actually do all of that magic for us, but it's hard to map from whatever it's doing in
+```python
+train_loss = calculate_loss(y_logits, target_y_ids)
+train_loss.backward()
+
+optimizer.step()
+```
+
+Simple, right?  But "just" is doing a lot of work in that sentence.  PyTorch is doing
+quite a lot of magic for us, and it's hard to map from whatever it's doing in
 its computation graph to the much easier-to-visualise process of doing backpropagation on
-a normal neural net.  What about
-that hidden state?  How does that get mixed in?
+a normal neural net, where our loss goes firstly to the last layer to work out gradients
+there, then to the second-last layer, then the third-last, and so on.  What about that
+hidden state?  How does that get mixed in?
 
-Conceptually, we can see the training of the RNN as being "unrolling it in time".
+Conceptually, we can see the training of the RNN as being "unrolling it" --
+or, to use Karpathy's phrase, backpropagation through time.
 That is, you can imagine it as repeating the neural network as many times as we had
-input items in our sequence, feeding the inputs through, and backpropagating through that,
+input items in our sequence, feeding the inputs through each one, and backpropagating through that,
 with the hidden states going through too.  So a five-layer neural network trained
 on a sequence of length ten would turn into a 50-layer network -- a normal neural
 network, and we can backpropagate through that!
 
-Let's give a couple of examples of what an unrolled network might look like.  Again,
-PyTorch is being much cleverer than this, but as a mental model I found this invaluable.
+That, I think, needs a bit more unpacking.  Let's give a couple of examples of what an unrolled network might look like.
 
 
 #### One-layer networks
 
-Let's imagine we have a one-layer RNN, and we run it on a sequence of three inputs.
-What "unrolling in time" means in this case is -- for the purpose of backpropagation --
-we can treat it as a normal three-layer NN.
+Let's look at single-layer networks first, because they're simpler.
+Firstly, we'll start by changing our view of the RNN.  Instead of seeing the hidden
+state as a variable held inside the network -- which is what it is in practice -- we
+can imagine the RNN as being a network that takes an input and a hidden state, and produces
+an output and a new hidden state.  The passing in of the new hidden state to the network
+in subsequent iterations would be an aspect of the code that was using it, something like this
+pseudocode:
 
-How does this help with the hidden state?  Well, let's treat it an output.  While the
-implementation of an RNN doesn't work this way, you can imagine that an RNN
-is just a regular one, and it becomes recurrent because of how you use it.
+```python
+hidden_state = zeros()
+for ii in inputs:
+    output, hidden_state = rnn(ii, hidden_state)
+```
 
-Imagine that a single-layer RNN is meant to have $i_\text{real}$ inputs, and $o_\text{real}$ outputs.  You want it to maintain
-a hidden state of size $s_\text{hidden}$.  So what you do, in this mental model, is create a regular NN
-with $i_\text{real} + s_\text{hidden}$ inputs and $o_\text{real} + s_\text{hidden}$ outputs.[^4]
+(PyTorch actually does something not dissimilar, so we're not going too far off
+at this stage!)
 
-Now you want to feed in a sequence.  You have your first input vector, which is
-(of course) $i_\text{real}$.  You pad that out with zeros so that the extra $s_\text{hidden}$ have
-something to work with.  Then when you get your $o_\text{real} + s_\text{hidden}$ outputs,
-you pass $o_\text{real}$ of them on to whatever is using the output of your RNN, and stash
-away the other $s_\text{hidden}$.
+Let's sketch that out:
 
-Now you want to process the next item in the sequence; this time, you take your
-new $i_\text{real}$ inputs, but instead of using zeros for the extras, you pass in the
-hidden state you got the last time.
+![An RNN viewed as a simple NN with the input and hidden state going in, and the output and new hidden state coming out](/post-assets/revisiting-karpathy-unreasonable-effectiveness-rnns/one-layer-rnn-visualised-as-simple-nn.svg "An RNN viewed as a simple NN with the input and hidden state going in, and the output and new hidden state coming out")
 
-It's pretty clear how you could stack a number of those, one after the other, to
-get something that was essentially a normal, backpropagate-able, neural network.
+<small>Figure 2</small>
+
+Of course, an RNN isn't really a normal neural network -- what it's doing with its inputs and
+hidden states isn't quite what happens in one of those -- but it's pretty similar. [^4]
+
+Now, imagine we've run it on a sequence of three inputs, and we want to backpropagate.
+We "unroll it in time", which in our model we can treat as being taking three copies,
+one for each element in the sequence, and running each input through one of them,
+passing the hidden state through, like this:
+
+![An RNN unrolled for a sequence of three elements, with one copy for each](/post-assets/revisiting-karpathy-unreasonable-effectiveness-rnns/one-layer-rnn-unrolled-three-times.svg "An RNN unrolled for a sequence of three elements, with one copy for each")
+
+<small>Figure 3</small>
+
+That looks like something we can backpropagate through!  We have our inputs (and an
+initial hidden state going in, and our outputs coming out.  We can ignore the final
+hidden state for the purposes of loss, and we're done.  Although things are skipping
+layers (eg. input 2 goes straight into the second layer of our unrolled network), that's
+no weirder than the residual/shortcut connections in an LLM.
+
+If you're happy with that as a model for what's happening with an unrolled RNN, then
+I recommend you skip to the next section on multi-layer RNNs, as the version above is closer to the reality than
+the next bit.
+
+However, when I was looking at RNNs for the first time, I was uncomfortable with those
+connections that skip layers.  If you've only done regular NNs where everything goes through
+every layer, it looks weird and might be hard to get your head around, like it was for me.
+The model I came up with was to posit a set of neurons that have weights that are fixed
+at one -- we'd have a set that all ignore input 1 and 3, and just pass through input 2
+unaffected.  Likewise we'd have two of those for input 3, and some for the outputs too --
+like this:
+
+![The same unrolled RNN using 'passthrough' blocks to avoid shortcut connections](/post-assets/revisiting-karpathy-unreasonable-effectiveness-rnns/one-layer-rnn-unrolled-three-times-with-passthrough.svg "The same unrolled RNN using 'passthrough' blocks to avoid shortcut connections")
+
+<small>Figure 4</small>
+
+Now that looks very much like a traditional network that we could run traditional
+backpropagation on.
+
+The passthrough connections are a little artificial --
+they are pinned to weights of one, and the network isn't fully connected (we don't want
+input 1 leaking into the passthroughs for inputs 2 or 3).  But I found it a useful
+stepping stone when I was moving from traditional networks where everything has to flow
+through every layer to something with connections that skip a layer, like in figure 3.
+If you're in the same position, I hope it helps, but I do urge you to try move on to
+the version with shortcuts, as it's closer to the mathematical reality of what's going
+on.  Think of this last model as being training wheels ;-)
 
 
 #### Multi-layer RNNs
@@ -397,48 +465,60 @@ its own hidden state, and `rnn2` its own different one.  For the example of the
 three-element sequence above, we want our "unrolling in time" to map to a regular
 neural network that we can backpropagate through.
 
-It's a bit of a stretch, but we can expand the "hidden states are just outputs we loop around in our wrapping
-code" to fit that too.  (Again, let me stress that this is a mental model, not how things
-work in practice.)
+That's not the end of the world, though -- we can just adjust our "hidden states are outputs"
+model of an RNN to handle it; in pseudocode:
 
-Imagine that our two layers were just normal neural networks.
-The first layer has $i_\text{real1}$ inputs and $o_\text{real1}$ outputs, and then
-the second has $o_\text{real1}$ inputs (because it needs to accept the outputs of the
-first layer) and $o_\text{real2}$ outputs.
+```python
+hidden_states = (zeros(), zeros())
+for ii in inputs:
+    output, hidden_states = rnn(ii, hidden_states)
+```
 
-Now, let's say that we have a hidden state of $s_\text{hidden1}$ for the first layer and $s_\text{hidden2}$
-for the second.
+-- that is, I'm treating the hidden state as a tuple of size two, one element for
+each layer's hidden state.  We can diagram that like this, just showing the inputs
+and the outputs and ignoring what's going on inside:
 
-We can feed the input plus all of the hidden states -- that is, $i_\text{real1} + s_\text{hidden1} + s_\text{hidden2}$ values
-into the first layer.  You can imagine that the inputs that correspond to the second layer's
-hidden states are just routed through neurons with weights of one so that they're passed
-through unchanged to that second layer.  In the meantime, it does the same stuff as in
-the single layer case to its own inputs and its own hidden state.
+![An unexpanded two-layer RNN showing hidden states for each layer going in and out](/post-assets/revisiting-karpathy-unreasonable-effectiveness-rnns/two-layer-rnn-unexpanded.svg "An unexpanded two-layer RNN showing hidden states for each layer going in and out")
 
-So the first layer is outputting its regular $o_\text{real1}$ outputs, the updated
-layer one hidden state of length $s_\text{hidden1}$, and the unchanged "pass-through"
-hidden state for the second layer of length $s_\text{hidden2}$.
+<small>Figure 5</small>
 
-The second layer uses the same trick of weight-one neurons to pass through the first
-layer's hidden weights unchanged, while doing the normal RNN stuff with its own hidden
-state and its inputs (which were the outputs of the first layer).
+But inside, we can do the same kind of thing as we did with the unrolling itself,
+with the appropriate hidden state going to each layer, while the input goes to layer
+1, and layer 1's output goes on to layer 2.  The output comes out of layer two, and
+the updated hidden states are just passed directly out:
 
-Now, once again, this really is just a mental model that's helpful to see how you can
+![An expanded two-layer RNN showing internal routing of data and hidden states](/post-assets/revisiting-karpathy-unreasonable-effectiveness-rnns/two-layer-rnn-expanded-simple.svg "An expanded two-layer RNN showing internal routing of data and hidden states")
+
+<small>Figure 6</small>
+
+Again, if you're uncomfortable with connections that skip layers, we can model those
+as do-nothing passthrough neurons, like this:
+
+![An expanded two-layer RNN showing internal routing of data and hidden states, using passthrough neurons](/post-assets/revisiting-karpathy-unreasonable-effectiveness-rnns/two-layer-rnn-expanded-with-passthrough.svg "An expanded two-layer RNN showing internal routing of data and hidden states, using passthrough neurons")
+
+<small>Figure 7</small>
+
+Now that we have a model of how one instance of a two-layer RNN can be modeled as
+a more traditional NN, hopefully you can see how that might be used in an expanded
+version of the unrolled model above in figure 3 (or 4 if you prefer passthroughs to
+shortcuts).  It's clearly getting unwieldy, but hopefully it's clear that what we have
+after unrolling is a normal neural network that you can backpropagate errors through.
+
+Once again: this really is just a mental model that's helpful to see how you can
 "unroll in time" an RNN -- what actually happens, especially with an automatic
 differentiation system like we have in PyTorch, is going to be pretty different.
 
-But hopefully this model helps anyone else struggling to understand how hidden
-states can be backpropagated through time.
+But it's close enough to the reality that we can use it to intuit how things work
+and understand problems.
 
 
 #### Wot no gradients? (Or possibly "ouch")
 
-It's also useful because thinking about what this would look like in practice makes
-it pretty obvious what the big problem with training RNNs was.  The deeper a network
+One obvious issue is the depth of the network.  The deeper a network
 is -- that is, the more layers -- the more prone it is to vanishing gradients, where
 during backpropagation, the further away from the end you get, the smaller the gradients
-get until they completely disappear.  There's also the problem with exploding gradients,
-where as a result of how different layers interact, they shoot up to infinity.
+get until they completely disappear.  There's also the opposite problem, exploding gradients,
+where as a result of how different layers interact, the gradients shoot up to infinity.
 
 Now, there are tricks to avoid them -- I wrote about [shortcut connections](/2025/08/llm-from-scratch-18-residuals-shortcut-connections-and-the-talmud)
 in my main LLM series -- but they do involve serious changes in the way that we think
@@ -446,32 +526,57 @@ about the network's architecture.
 
 And with RNNs, the depth of the unrolled network is directly linked to the sequence length.
 After all, a five-layer network fed (say) a 1,024-item sequence is going to unroll into
-a 5,120-layer network.  Good luck backpropagating over that.  By the time you get to
+a 5,120-layer network.  Good luck backpropagating over that.  Well before you get to
 the copy of the network that represents the first input sequence, you'll either have
 no gradients or infinite ones.
 
-One partial solution to that is the "50 character BPTT" that Karpathy mentioned in
-the quote above with his 100-character sequences. BPTT is just "Backpropagation
-Through Time" -- so, essentially, the unrolling of the network for training.
+One partial solution to that is the "truncated backpropagation through time of length 100 characters." that Karpathy mentioned in
+the quote above.
 
-What he means when talking about doing 50-character BPTT on a 100-character sequence is is that he trains on
-the first 50 characters, backpropagates through those, then *detaches* the hidden
-state (removing its gradient history) and continues training on the second 50
-characters, backpropagating through that chunk separately.
+When you're training an LLM -- let's say on "War and Peace", you would firstly slice
+it up into sequences, each as long as your LLM's context length.  You'd then treat them
+all as being pretty much independent -- you'd put a random selection into your validation
+(and maybe test) sets, then train on the remainder in no particular order, working out
+the loss between the results of feeding each sequence through the LLM, and the shifted-left
+target sequences.
 
-As a result, the second 50-character chunk starts with a non-zero hidden state,
-which it would not do if we'd just split the 100-character sequence into two completely
+Training an RNN is very different.  If you had a batch size of 1, and you were training
+on "War and Peace", you might in theory run the entire book through, byte by byte,
+then work out your loss on what it predicted as it went along.
+
+With 3,359,652 characters in the copy I downloaded from Project Gutenberg, and two
+layers in the example network Karpathy uses, that's somewhere north of 6.5 million
+layers in the unrolled network to backpropagate through.
+
+Obviously that's not going to work :-)
+
+So (and remember that we're using a batch size of one [^5]), what you do instead is run through
+100 characters, then work out the loss for what you got out, and then do your backpropagation.
+
+That might sound a bit like a normal batch with the length set to the context length
+in an LLM, but there's a crucial difference.  Once you've done your backpropagation,
+you continue through the training text from exactly the point where you stopped,
+without clearing out the hidden state.  Instead, you *detach* the hidden state before you continue so that
+its gradient history is cleared.  You do the next 100 characters, and backpropagate and
+detach again, and so on.
+
+As a result, the second 100-character chunk starts with a non-zero hidden state,
+which it would not do if we'd just split the whole 3,359,652 sequence into 33,597 completely
 separate training examples.  But the detaching of the hidden state means that each
-of the two backpropagations only has to deal with 50 times the number of layers in the RNN,
+of the two backpropagations only has to deal with 100 times the number of layers in the RNN,
 which (a) makes things quicker and (b) doesn't actually matter that much, because
 vanishing gradients would normally make the backpropagation signal disappear pretty
-quickly anyway.
+quickly anyway.  Indeed, as he mentions, "this can be cut in half with 50 character BPTT at negligible cost in performance".
 
-And that works in this case -- as he says, it has "negligible cost in performance".  But
+And that works in this case.  But
 that's not a general rule, it's what he found for these examples.
 In general, with RNNs you would need to backpropagate over a very deep unrolled neural network
 -- and although in real life you're not actually unrolling it, what PyTorch is doing
 is close enough that the vanishing and exploding gradients do occur.
+
+And that, along with the fixed-length bottleneck, is why
+LLMs, with their fixed depth -- essentially constant times the number of attention
+layers plus some overhead -- turned out to be easier to work with.
 
 
 
@@ -481,16 +586,25 @@ So, that's a wrap on this post about "The Unreasonable Effectiveness of Recurren
 at least, some thoughts on how the models it describes differ from the LLMs
 I've been learning to date.  I hope it was interesting to read, and if you haven't
 tried it already, I do suggest having a play with the [repo](https://github.com/gpjt/karpathy-rnns-repro)
--- or, if you're feeling brave and don't mind playing with ten-year-old Lua ML
+-- or, if you're feeling brave and don't mind working with ten-year-old Lua ML
 code, [Karpathy's original repo](https://github.com/karpathy/char-rnn).  I would also
-say, please do read the post, but I'm sure you already have (and if not, I'm surprised
+say, please do read the [post](https://karpathy.github.io/2015/05/21/rnn-effectiveness/), but I'm sure you already have (and if not, I'm surprised
 you made it all the way here...)
 
+Let me finish, like Karpathy does, with a sample for an RNN trained on the (tiny 30kB) content of
+this post -- `post-itself` in the repo, deliberately overfit with validation loss rising:
+
+> The RNNs in the sequence of the ware the for the extsting of the network and the frome to the the fard
+
+Well, exactly!
+
 As always, if you're reading this and know more about it than I do, any comments
-or corrections would be much appreciated :-)
+or corrections would be much appreciated.  Oh, and also: if you thought the diagrams
+were ugly, I agree 100% and would be grateful for any suggestions on tools for automatically
+generating stuff like that from text -- kind of a LaTeX for diagrams, if it exists.
 
 Next time in this series, I'll post about what I learned while creating my PyTorch
-implementation.
+implementation.  There will be much ado about batching and datasets.
 
 
 
@@ -499,7 +613,7 @@ implementation.
     by a weight matrix to get an "initial draft" of the new state, then uses another weight
     matrix to project the vector of inputs to the same dimensionality as the hidden
     state, then adds the two and runs that through his activation function to get the
-    real new state.  Then
+    real new hidden state.  Then
     the output is just a (learned) projection of the new hidden state into the output's
     dimensionality.
 
@@ -508,11 +622,10 @@ implementation.
 
 [^3]: Karpathy mentions the use of temperature in sampling from the probability
     distribution; that's not something I've covered in my LLM series yet, but it
-    will either come up in the next post on that one, or the next one on this one --
-    whichever comes next.
+    will either come up in the next post in that series, or the next in this one --
+    whichever comes first.
 
-[^4]: Of course, a normal neural network isn't doing quite the same as the networks
-    I'm describing.  But it can collapse to the same thing.  Karpathy's code has:
+[^4]: It can actually collapse to one with three layers.  Karpathy's code has:
 
     ```python
         self.h = np.tanh(np.dot(self.W_hh, self.h) + np.dot(self.W_xh, x))
@@ -528,7 +641,8 @@ implementation.
     adds the two together, with a $\tanh$ activation function.  Finally we have another
     layer with no activation function to do the `np.dot(self.W_hy, self.h)`.
 
-
+[^5]: Adding on batches complicates this, of course, and I'll dig into that in the next post
+    in this series.
 
 
 
