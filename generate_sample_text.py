@@ -21,7 +21,6 @@ def generate_sample_text(model, tokenizer, length, primer_text=None, temperature
 
     with torch.no_grad():
         model.eval()
-        hidden_state = None
         if primer_text is None:
             primer_bytes = [tokenizer.random_vocab_byte()]
         else:
