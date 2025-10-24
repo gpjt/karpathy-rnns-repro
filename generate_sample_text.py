@@ -6,11 +6,10 @@ from persistence import RunData, load_checkpoint
 
 
 def sample(logits, temperature):
-    logits_last = logits[:, -1, :]
     if temperature == 0.0:
-        return torch.argmax(logits_last, dim=-1, keepdim=True)
+        return torch.argmax(logits, dim=-1, keepdim=True)
 
-    probs = torch.softmax(logits_last / temperature, dim=-1)
+    probs = torch.softmax(logits / temperature, dim=-1)
     return torch.multinomial(probs, num_samples=1)
 
 
@@ -27,11 +26,11 @@ def generate_sample_text(model, tokenizer, length, primer_text=None, temperature
         primer = primer.to(next(model.parameters()).device)
 
         y_logits, hidden_state = model(primer)
-        next_id = sample(y_logits, temperature)
+        next_id = sample(y_logits[:, -1, :], temperature)
         output_ids = [next_id.item()]
         for ii in range(length - 1):
             y_logits, hidden_state = model(next_id, hidden_state)
-            next_id = sample(y_logits, temperature)
+            next_id = sample(y_logits[:, -1, :], temperature)
             output_ids.append(next_id.item())
 
     return tokenizer.decode(output_ids)
