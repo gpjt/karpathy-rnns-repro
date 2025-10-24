@@ -5,13 +5,11 @@ import torch
 from persistence import RunData, load_checkpoint
 
 
-
 def sample(logits, temperature):
     logits_last = logits[:, -1, :]
     if temperature == 0.0:
         next_id = torch.argmax(logits_last, dim=-1, keepdim=True)
     else:
-        assert temperature > 0
         probs = torch.softmax(logits_last / temperature, dim=-1)
         next_id = torch.multinomial(probs, num_samples=1)
 
