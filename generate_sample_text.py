@@ -8,12 +8,10 @@ from persistence import RunData, load_checkpoint
 def sample(logits, temperature):
     logits_last = logits[:, -1, :]
     if temperature == 0.0:
-        next_id = torch.argmax(logits_last, dim=-1, keepdim=True)
-    else:
-        probs = torch.softmax(logits_last / temperature, dim=-1)
-        next_id = torch.multinomial(probs, num_samples=1)
+        return torch.argmax(logits_last, dim=-1, keepdim=True)
 
-    return next_id
+    probs = torch.softmax(logits_last / temperature, dim=-1)
+    return torch.multinomial(probs, num_samples=1)
 
 
 def generate_sample_text(model, tokenizer, length, primer_text=None, temperature=0):
