@@ -50,7 +50,7 @@ class GTRNN(torch.nn.Module):
         if hs is None:
             hs = xs.new_zeros((batch_size, self.num_layers, self.hidden_size))
 
-        outputs = xs.new_zeros(batch_size, seq_length, self.hidden_size)
+        outputs = xs.new_empty(batch_size, seq_length, self.hidden_size)
 
         for x_ix in range(seq_length):
             new_hs = hs.new_empty(hs.shape)
