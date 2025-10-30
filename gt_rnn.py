@@ -28,10 +28,13 @@ class GTRNN(torch.nn.Module):
     ):
         super().__init__()
 
+        self.input_size = input_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers
 
-        self.input_layer = GTRNNCell(input_size, self.hidden_size, bias=bias)
+        self.input_layer = GTRNNCell(
+            self.input_size, self.hidden_size, bias=bias
+        )
         self.dropouts = torch.nn.ModuleList()
         self.hidden_layers = torch.nn.ModuleList()
         for ii in range(num_layers - 1):
@@ -39,18 +42,32 @@ class GTRNN(torch.nn.Module):
                 torch.nn.Dropout(dropout)
             )
             self.hidden_layers.append(
-                GTRNNCell(hidden_size, hidden_size, bias=bias)
+                GTRNNCell(
+                    self.hidden_size,
+                    self.hidden_size,
+                    bias=bias
+                )
             )
 
     def forward(self, xs, hs=None):
-        # xs B,seq_len,input_size
-        # hs B,layers,hidden_size
-        batch_size, seq_length, input_size = xs.shape
+        x_batch_size, seq_length, input_size = xs.shape
+        assert input_size == self.input_size
 
         if hs is None:
-            hs = xs.new_zeros((batch_size, self.num_layers, self.hidden_size))
+            hs = xs.new_zeros((
+                x_batch_size, self.num_layers, self.hidden_size
+            ))
+        else:
+            # NB even with batch_first, PyTorch has the hidden
+            # state as (L, B, H) -- we're keeping it consistent
+            # with the batch-first inputs and outputs instead.
+            # Doesn't matter for our use case
+            hs_batch_size, hs_layers, hs_hidden_size = hs.shape
+            assert hs_batch_size == x_batch_size
+            assert hs_layers == self.num_layers
+            assert hs_hidden_size == self.hidden_size
 
-        outputs = xs.new_empty(batch_size, seq_length, self.hidden_size)
+        outputs = xs.new_empty(x_batch_size, seq_length, self.hidden_size)
 
         for x_ix in range(seq_length):
             new_hs = hs.new_empty(hs.shape)
