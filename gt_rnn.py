@@ -55,15 +55,16 @@ class GTRNN(torch.nn.Module):
         outputs = xs.new_zeros(batch_size, seq_length, self.hidden_size)
 
         for x_ix in range(seq_length):
+            new_hs = hs.new_empty(hs.shape)
             x = xs[:, x_ix, :]
             y, layer_hs = self.input_layer(x, hs[:, 0, :])
-            hs[:, 0, :] = layer_hs
+            new_hs[:, 0, :] = layer_hs
             for layer_ix, (dropout, cell) in enumerate(zip(self.dropouts, self.hidden_layers), start=1):
                 y = dropout(y)
                 y, layer_hs = cell(y, hs[:, layer_ix, :])
-                hs[:, layer_ix, :] = layer_hs
-            print(x_ix)
+                new_hs[:, layer_ix, :] = layer_hs
             outputs[:, x_ix, :] = y
+            hs = new_hs
         return outputs, hs
 
 
