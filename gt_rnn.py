@@ -49,6 +49,16 @@ class GTRNN(torch.nn.Module):
                 )
             )
 
+    def _forward_one_step(self, x, hs):
+        new_hs = hs.new_empty(hs.shape)
+        y, layer_hs = self.input_layer(x, hs[:, 0, :])
+        new_hs[:, 0, :] = layer_hs
+        for layer_ix, (dropout, cell) in enumerate(zip(self.dropouts, self.hidden_layers), start=1):
+            y = dropout(y)
+            y, layer_hs = cell(y, hs[:, layer_ix, :])
+            new_hs[:, layer_ix, :] = layer_hs
+        return y, new_hs
+
     def forward(self, xs, hs=None):
         x_batch_size, seq_length, input_size = xs.shape
         assert input_size == self.input_size
@@ -70,16 +80,8 @@ class GTRNN(torch.nn.Module):
         outputs = xs.new_empty(x_batch_size, seq_length, self.hidden_size)
 
         for x_ix in range(seq_length):
-            new_hs = hs.new_empty(hs.shape)
-            x = xs[:, x_ix, :]
-            y, layer_hs = self.input_layer(x, hs[:, 0, :])
-            new_hs[:, 0, :] = layer_hs
-            for layer_ix, (dropout, cell) in enumerate(zip(self.dropouts, self.hidden_layers), start=1):
-                y = dropout(y)
-                y, layer_hs = cell(y, hs[:, layer_ix, :])
-                new_hs[:, layer_ix, :] = layer_hs
+            y, hs = self._forward_one_step(xs[:, x_ix, :], hs)
             outputs[:, x_ix, :] = y
-            hs = new_hs
         return outputs, hs
 
 
