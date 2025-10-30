@@ -36,7 +36,7 @@ class GTRNN(torch.nn.Module):
         self.hidden_layers = torch.nn.ModuleList()
         for ii in range(num_layers - 1):
             self.dropouts.append(
-                torch.nn.modules.dropout.Dropout(dropout)
+                torch.nn.Dropout(dropout)
             )
             self.hidden_layers.append(
                 GTRNNCell(hidden_size, hidden_size, bias=bias)
