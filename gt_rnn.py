@@ -51,7 +51,8 @@ class GTRNN(torch.nn.Module):
                 y = dropout(y)
                 y, hs = cell(y, hs)
             outputs.append(y)
-        return torch.stack(outputs), hs
+        tensor_outputs = torch.stack(outputs, dim=1)  # B,seq_length,hidden_size
+        return tensor_outputs, hs
 
 
 if __name__ == "__main__":
