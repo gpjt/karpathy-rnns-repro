@@ -28,7 +28,9 @@ class GTRNN(torch.nn.Module):
     ):
         super().__init__()
 
-        self.input_layer = GTRNNCell(input_size, hidden_size, bias=bias)
+        self.hidden_size = hidden_size
+
+        self.input_layer = GTRNNCell(input_size, self.hidden_size, bias=bias)
         self.dropouts = torch.nn.ModuleList()
         self.hidden_layers = torch.nn.ModuleList()
         for ii in range(num_layers - 1):
@@ -43,16 +45,15 @@ class GTRNN(torch.nn.Module):
         # xs B,seq_len,input_size
         # hs B,hidden_size
         batch_size, seq_length, input_size = xs.shape
-        outputs = []
+        outputs = xs.new_zeros(batch_size, seq_length, self.hidden_size)
         for x_ix in range(seq_length):
             x = xs[:, x_ix, :]
             y, hs = self.input_layer(x, hs)
             for (dropout, cell) in zip(self.dropouts, self.hidden_layers):
                 y = dropout(y)
                 y, hs = cell(y, hs)
-            outputs.append(y)
-        tensor_outputs = torch.stack(outputs, dim=1)  # B,seq_length,hidden_size
-        return tensor_outputs, hs
+            outputs[:, x_ix, :] = y
+        return outputs, hs
 
 
 if __name__ == "__main__":
