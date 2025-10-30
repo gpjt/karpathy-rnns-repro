@@ -49,8 +49,6 @@ class GTRNN(torch.nn.Module):
 
         if hs is None:
             hs = xs.new_zeros((batch_size, self.num_layers, self.hidden_size))
-        else:
-            hs = hs.clone()
 
         outputs = xs.new_zeros(batch_size, seq_length, self.hidden_size)
 
