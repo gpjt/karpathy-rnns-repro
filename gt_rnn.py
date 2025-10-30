@@ -43,7 +43,7 @@ class GTRNN(torch.nn.Module):
         outputs = []
         for x_ix in range(seq_length):
             x = xs[:, x_ix, :]
-            y, hs = self.input_layer(x)
+            y, hs = self.input_layer(x, hs)
             for (dropout, cell) in self.hidden_layers:
                 y = dropout(y)
                 y, hs = cell(y, hs)
