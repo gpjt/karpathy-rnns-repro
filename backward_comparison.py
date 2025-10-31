@@ -7,7 +7,7 @@ hidden_size = 10
 batch_size = 3
 
 
-def measure_total_gradients(model, input_sequence, truncate_at):
+def measure_total_gradients(model, input_sequence, truncate_depth):
     model.zero_grad()
 
     h = None
@@ -17,7 +17,7 @@ def measure_total_gradients(model, input_sequence, truncate_at):
             y, h = model(x_step)
         else:
             y, h = model(x_step, h)
-        if step == truncate_at:
+        if step == (seq_length - truncate_depth):
             if isinstance(h, tuple):
                 h_n, c_n = h
                 h = (h_n.detach(), c_n.detach())
@@ -44,11 +44,11 @@ def main():
         batch_size, seq_length, input_size, dtype=torch.float
     )
 
-    for truncate_at in range(seq_length):
+    for truncate_depth in range(seq_length):
         gradients = measure_total_gradients(
-            lstm, input_sequence, truncate_at
+            lstm, input_sequence, truncate_depth
         )
-        print(truncate_at, gradients)
+        print(truncate_depth, gradients)
 
 
 if __name__ == "__main__":
