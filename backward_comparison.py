@@ -4,23 +4,28 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import torch.nn.functional as F
 
 from karpathy_model import KarpathyModel
 from next_byte_dataset import NextByteDataset, batchify, read_corpus_bytes
 from persistence import RunData
 
 
-def measure_total_gradients(model, input_sequence, truncate_depth):
+def measure_total_gradients(
+    model, input_sequence, target_sequence, truncate_depth
+):
     model.zero_grad(set_to_none=True)
     _, seq_length = input_sequence.shape
 
     h = None
+    all_ys = []
     for step in range(seq_length):
         x_step = input_sequence[:, step:step + 1]
         if h is None:
             y, h = model(x_step)
         else:
             y, h = model(x_step, h)
+        all_ys.append(y)
 
         steps_left = seq_length - (step + 1)
         if steps_left == truncate_depth:
@@ -30,7 +35,13 @@ def measure_total_gradients(model, input_sequence, truncate_depth):
             else:
                 h = h.detach()
 
-    loss = 1 - y.mean()
+    all_ys_tensor = torch.stack(all_ys)
+    all_ys_tensor = all_ys_tensor.squeeze()
+
+    loss = F.cross_entropy(
+        all_ys_tensor.flatten(0, 1),
+        target_sequence.flatten()
+    )
     loss.backward()
 
     gradients = 0
@@ -121,12 +132,12 @@ def main(directory, run_name):
     depth_vs_gradients_rnn = []
     for truncate_depth in tqdm(range(1, run.train_data["seq_length"])):
         lstm_gradients = measure_total_gradients(
-            lstm, x_ids, truncate_depth
+            lstm, x_ids, y_ids, truncate_depth
         )
         depth_vs_gradients_lstm.append((truncate_depth, lstm_gradients))
 
         rnn_gradients = measure_total_gradients(
-            rnn, x_ids, truncate_depth
+            rnn, x_ids, y_ids, truncate_depth
         )
         depth_vs_gradients_rnn.append((truncate_depth, rnn_gradients))
 
