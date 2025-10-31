@@ -1,4 +1,5 @@
 import click
+from tqdm import tqdm
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -117,7 +118,7 @@ def main(directory, run_name):
 
     depth_vs_gradients_lstm = []
     depth_vs_gradients_rnn = []
-    for truncate_depth in range(1, run.train_data["seq_length"]):
+    for truncate_depth in tqdm(range(1, run.train_data["seq_length"])):
         lstm_gradients = measure_total_gradients(
             lstm, input_sequence, truncate_depth
         )
