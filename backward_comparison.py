@@ -1,7 +1,7 @@
 import torch
 
 
-seq_length = 400
+seq_length = 100
 input_size = 3
 hidden_size = 10
 batch_size = 3
@@ -42,15 +42,27 @@ def main():
     lstm = torch.nn.LSTM(input_size, hidden_size, batch_first=True)
     lstm.eval()
 
+    rnn = torch.nn.RNN(input_size, hidden_size, batch_first=True)
+
     input_sequence = torch.rand(
         batch_size, seq_length, input_size, dtype=torch.float
     )
 
+    depth_vs_gradients_lstm = []
+    depth_vs_gradients_rnn = []
     for truncate_depth in range(1, seq_length):
-        gradients = measure_total_gradients(
+        lstm_gradients = measure_total_gradients(
             lstm, input_sequence, truncate_depth
         )
-        print(truncate_depth, gradients)
+        depth_vs_gradients_lstm.append((truncate_depth, lstm_gradients))
+
+        rnn_gradients = measure_total_gradients(
+            rnn, input_sequence, truncate_depth
+        )
+        depth_vs_gradients_rnn.append((truncate_depth, rnn_gradients))
+
+    print(depth_vs_gradients_lstm)
+    print(depth_vs_gradients_rnn)
 
 
 if __name__ == "__main__":
