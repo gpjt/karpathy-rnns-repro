@@ -1,16 +1,17 @@
+import click
+
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import torch.nn.functional as F
 
-
-seq_length = 30
-input_size = 3
-hidden_size = 10
-batch_size = 3
+from next_byte_dataset import NextByteDataset, batchify, read_corpus_bytes
+from persistence import RunData
 
 
 def measure_total_gradients(model, input_sequence, truncate_depth):
     model.zero_grad(set_to_none=True)
+    _, seq_length, __ = input_sequence.shape
 
     h = None
     for step in range(seq_length):
@@ -85,22 +86,38 @@ def plot_backward_comparison(
     plt.close(fig)
 
 
-def main():
+@click.command()
+@click.argument("directory")
+@click.argument("run_name")
+def main(directory, run_name):
+    run = RunData(directory, run_name)
+
+    dataset = NextByteDataset(
+        read_corpus_bytes(run.data_dir),
+        run.train_data["seq_length"]
+    )
+    batches = batchify(dataset, run.train_data["batch_size"])
+
     torch.manual_seed(42)
 
-    lstm = torch.nn.LSTM(input_size, hidden_size, batch_first=True)
+    lstm = torch.nn.LSTM(
+        dataset.tokenizer.vocab_size, run.model_data["hidden_size"],
+        batch_first=True
+    )
     lstm.eval()
 
-    rnn = torch.nn.RNN(input_size, hidden_size, batch_first=True)
+    rnn = torch.nn.RNN(
+        dataset.tokenizer.vocab_size, run.model_data["hidden_size"],
+        batch_first=True
+    )
     rnn.eval()
 
-    input_sequence = torch.rand(
-        batch_size, seq_length, input_size, dtype=torch.float
-    )
+    x_ids, y_ids, _, __ = batches[0]
+    input_sequence = F.one_hot(x_ids, dataset.tokenizer.vocab_size).float()
 
     depth_vs_gradients_lstm = []
     depth_vs_gradients_rnn = []
-    for truncate_depth in range(1, seq_length):
+    for truncate_depth in range(1, run.train_data["seq_length"]):
         lstm_gradients = measure_total_gradients(
             lstm, input_sequence, truncate_depth
         )
