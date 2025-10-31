@@ -4,7 +4,7 @@ from pathlib import Path
 
 from safetensors.torch import load_file, save_file
 
-from karpathy_lstm import KarpathyLSTM
+from karpathy_model import KarpathyModel
 from next_byte_tokenizer import NextByteTokenizer
 
 
@@ -79,8 +79,7 @@ def load_checkpoint(run, checkpoint):
     state = load_file(safetensors_file(checkpoint_dir))
 
     tokenizer = NextByteTokenizer(meta["id_to_byte"])
-    model = KarpathyLSTM(vocab_size=tokenizer.vocab_size, **run.model_data)
+    model = KarpathyModel(vocab_size=tokenizer.vocab_size, **run.model_data)
     model.load_state_dict(state)
 
     return model, tokenizer
-

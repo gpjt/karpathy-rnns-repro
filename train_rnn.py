@@ -8,7 +8,7 @@ import torch.nn.functional as F
 
 from generate_sample_text import generate_sample_text
 from generate_training_chart import generate_training_chart
-from karpathy_lstm import KarpathyLSTM
+from karpathy_model import KarpathyModel
 from next_byte_dataset import NextByteDataset, batchify, read_corpus_bytes
 from persistence import RunData, save_checkpoint
 
@@ -132,7 +132,7 @@ def main(directory, run_name):
     val_batches = batches[train_batch_count:]
     print(f"We have {len(train_batches)} training batches and {len(val_batches)} validation batches")
 
-    model = KarpathyLSTM(vocab_size=dataset.tokenizer.vocab_size, **run.model_data)
+    model = KarpathyModel(vocab_size=dataset.tokenizer.vocab_size, **run.model_data)
 
     train(model, run, dataset.tokenizer, train_batches, val_batches)
 

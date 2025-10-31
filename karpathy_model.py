@@ -2,7 +2,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class KarpathyLSTM(nn.Module):
+class KarpathyModel(nn.Module):
 
     def __init__(self, vocab_size, hidden_size, num_layers, dropout):
         super().__init__()
