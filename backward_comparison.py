@@ -38,6 +38,7 @@ def main():
     torch.manual_seed(42)
 
     lstm = torch.nn.LSTM(input_size, hidden_size, batch_first=True)
+    lstm.eval()
 
     input_sequence = torch.rand(
         batch_size, seq_length, input_size, dtype=torch.float
