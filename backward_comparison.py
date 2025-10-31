@@ -4,19 +4,19 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import torch.nn.functional as F
 
+from karpathy_model import KarpathyModel
 from next_byte_dataset import NextByteDataset, batchify, read_corpus_bytes
 from persistence import RunData
 
 
 def measure_total_gradients(model, input_sequence, truncate_depth):
     model.zero_grad(set_to_none=True)
-    _, seq_length, __ = input_sequence.shape
+    _, seq_length = input_sequence.shape
 
     h = None
     for step in range(seq_length):
-        x_step = input_sequence[:, step:step + 1, :]
+        x_step = input_sequence[:, step:step + 1]
         if h is None:
             y, h = model(x_step)
         else:
@@ -34,7 +34,7 @@ def measure_total_gradients(model, input_sequence, truncate_depth):
     loss.backward()
 
     gradients = 0
-    for name, param in model.named_parameters():
+    for name, param in model.internal_model.named_parameters():
         if "weight" in name:
             gradients += param.grad.abs().norm().item()
     return gradients
@@ -101,31 +101,32 @@ def main(directory, run_name):
 
     torch.manual_seed(42)
 
-    lstm = torch.nn.LSTM(
+    lstm = KarpathyModel(
         dataset.tokenizer.vocab_size, run.model_data["hidden_size"],
-        batch_first=True
+        run.model_data["num_layers"], dropout=0,
+        internal_model_class=torch.nn.LSTM
     )
     lstm.eval()
 
-    rnn = torch.nn.RNN(
+    rnn = KarpathyModel(
         dataset.tokenizer.vocab_size, run.model_data["hidden_size"],
-        batch_first=True
+        run.model_data["num_layers"], dropout=0,
+        internal_model_class=torch.nn.RNN
     )
     rnn.eval()
 
     x_ids, y_ids, _, __ = batches[0]
-    input_sequence = F.one_hot(x_ids, dataset.tokenizer.vocab_size).float()
 
     depth_vs_gradients_lstm = []
     depth_vs_gradients_rnn = []
     for truncate_depth in tqdm(range(1, run.train_data["seq_length"])):
         lstm_gradients = measure_total_gradients(
-            lstm, input_sequence, truncate_depth
+            lstm, x_ids, truncate_depth
         )
         depth_vs_gradients_lstm.append((truncate_depth, lstm_gradients))
 
         rnn_gradients = measure_total_gradients(
-            rnn, input_sequence, truncate_depth
+            rnn, x_ids, truncate_depth
         )
         depth_vs_gradients_rnn.append((truncate_depth, rnn_gradients))
 
