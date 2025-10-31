@@ -43,6 +43,7 @@ def main():
     lstm.eval()
 
     rnn = torch.nn.RNN(input_size, hidden_size, batch_first=True)
+    rnn.eval()
 
     input_sequence = torch.rand(
         batch_size, seq_length, input_size, dtype=torch.float
