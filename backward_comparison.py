@@ -12,10 +12,11 @@ def measure_total_gradients(model, input_sequence, truncate_at):
 
     h = None
     for step in range(seq_length):
+        x_step = input_sequence[:, step:step + 1, :]
         if h is None:
-            y, h = model(input_sequence[:, step, :])
+            y, h = model(x_step)
         else:
-            y, h = model(input_sequence[:, step, :], h)
+            y, h = model(x_step, h)
         if step == truncate_at:
             if isinstance(h, tuple):
                 h_n, c_n = h
