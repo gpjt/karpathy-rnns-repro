@@ -16,10 +16,10 @@ def measure_total_gradients(model, input_sequence, truncate_at):
             y, h = model(input_sequence[:, step, :], h)
         if step == truncate_at:
             if isinstance(h, tuple):
-                for s in h:
-                    s.detach()
+                h_n, c_n = h
+                h = (h_n.detach(), c_n.detach())
             else:
-                h.detach()
+                h = h.detach()
 
     loss = 1 - y.mean()
     loss.backward()
