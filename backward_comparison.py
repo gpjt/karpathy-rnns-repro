@@ -86,7 +86,8 @@ def plot_backward_comparison(
 
     # Right axis: LSTM
     lstm_line, = ax2.plot(
-        d_lstm, g_lstm, label="LSTM", marker="o", markersize=3
+        d_lstm, g_lstm, label="LSTM", marker="o", markersize=3,
+        color="orange"
     )
     ax2.set_yscale("log")
     ax2.set_ylabel("GRADIENT METRIC — LSTM (LOG)")
@@ -94,7 +95,7 @@ def plot_backward_comparison(
     # One legend with both lines
     lines = [rnn_line, lstm_line]
     labels = [l.get_label() for l in lines]
-    ax.legend(lines, labels, loc="best")
+    ax.legend(lines, labels, loc="lower right")
 
     fig.tight_layout()
     fig.savefig("backward-comparison.png", bbox_inches="tight")
