@@ -17,7 +17,9 @@ def measure_total_gradients(model, input_sequence, truncate_depth):
             y, h = model(x_step)
         else:
             y, h = model(x_step, h)
-        if step == (seq_length - truncate_depth):
+
+        steps_left = seq_length - (step + 1)
+        if steps_left == truncate_depth:
             if isinstance(h, tuple):
                 h_n, c_n = h
                 h = (h_n.detach(), c_n.detach())
@@ -44,7 +46,7 @@ def main():
         batch_size, seq_length, input_size, dtype=torch.float
     )
 
-    for truncate_depth in range(seq_length):
+    for truncate_depth in range(1, seq_length):
         gradients = measure_total_gradients(
             lstm, input_sequence, truncate_depth
         )
