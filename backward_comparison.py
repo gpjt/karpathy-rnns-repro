@@ -8,7 +8,7 @@ batch_size = 3
 
 
 def measure_total_gradients(model, input_sequence, truncate_depth):
-    model.zero_grad()
+    model.zero_grad(set_to_none=True)
 
     h = None
     for step in range(seq_length):
