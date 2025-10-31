@@ -112,21 +112,25 @@ def main(directory, run_name):
 
     torch.manual_seed(42)
 
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     lstm = KarpathyModel(
         dataset.tokenizer.vocab_size, run.model_data["hidden_size"],
         run.model_data["num_layers"], dropout=0,
         internal_model_class=torch.nn.LSTM
     )
-    lstm.eval()
+    lstm.to(device)
 
     rnn = KarpathyModel(
         dataset.tokenizer.vocab_size, run.model_data["hidden_size"],
         run.model_data["num_layers"], dropout=0,
         internal_model_class=torch.nn.RNN
     )
-    rnn.eval()
+    rnn.to(device)
 
     x_ids, y_ids, _, __ = batches[0]
+    x_ids = x_ids.to(device)
+    y_ids = y_ids.to(device)
 
     depth_vs_gradients_lstm = []
     depth_vs_gradients_rnn = []
