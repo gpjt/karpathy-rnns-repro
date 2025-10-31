@@ -34,7 +34,7 @@ def measure_total_gradients(model, input_sequence, truncate_depth):
     gradients = 0
     for name, param in model.named_parameters():
         if "weight" in name:
-            gradients += param.grad.abs().mean().item()
+            gradients += param.grad.abs().norm().item()
     return gradients
 
 
