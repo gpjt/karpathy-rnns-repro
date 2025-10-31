@@ -25,7 +25,7 @@ def measure_total_gradients(
             y, h = model(x_step)
         else:
             y, h = model(x_step, h)
-        all_ys.append(y)
+        all_ys.append(y.squeeze())
 
         steps_left = seq_length - (step + 1)
         if steps_left == truncate_depth:
@@ -35,12 +35,15 @@ def measure_total_gradients(
             else:
                 h = h.detach()
 
-    all_ys_tensor = torch.stack(all_ys)
+    all_ys_tensor = torch.stack(all_ys, dim=1)
     all_ys_tensor = all_ys_tensor.squeeze()
 
+    within_truncation_window_ys = all_ys_tensor[:, -truncate_depth:, :]
+    within_truncation_window_targets = target_sequence[:, -truncate_depth:]
+
     loss = F.cross_entropy(
-        all_ys_tensor.flatten(0, 1),
-        target_sequence.flatten()
+        within_truncation_window_ys.flatten(0, 1),
+        within_truncation_window_targets.flatten()
     )
     loss.backward()
 
